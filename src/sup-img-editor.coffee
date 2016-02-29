@@ -147,8 +147,8 @@ supImageEditor = ->
         max(area_left+move_x, 0),
         $img_editor.clientWidth-$options.crop_min_size
       )
-      width = max(area_width - left, $options.crop_min_size)
-      height = max(area_height - top, $options.crop_min_size)
+      width = max(max_width - left, $options.crop_min_size)
+      height = max(max_height - top, $options.crop_min_size)
 
       if dim.drag[0]
         $img_crop_area.style.left = px(left) if dim.drag[0] > 0
