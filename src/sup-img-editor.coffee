@@ -23,7 +23,7 @@ supImageEditor = ->
   
   $options = 
     corner_size: 16
-    crop_min_size: 64
+    crop_min_size: 32
 
   $img_editor = null
   $img_crop_area = null
@@ -36,14 +36,30 @@ supImageEditor = ->
   IMG_CANVAS = 'img-editor-canvas'
   
   ORIENTATION = 
-    'qian': [0,0]
-    'kan': [0.5,0]
-    'gen': [1,0]
-    'zhen': [1,0.5]
-    'xun': [1,1]
-    'li': [0.5,1]
-    'kun': [0,1]
-    'dui': [0,0.5]
+    'qian': 
+      pos: [0, 0]
+      drag: [1, 1]
+    'kan': 
+      pos: [0.5, 0]
+      drag: [0, 1]
+    'gen': 
+      pos: [1, 0]
+      drag: [-1, 1]
+    'zhen': 
+      pos: [1, 0.5]
+      drag: [-1, 0]
+    'xun': 
+      pos: [1, 1]
+      drag: [-1, -1]
+    'li': 
+      pos: [0.5, 1]
+      drag: [0, -1]
+    'kun': 
+      pos: [0, 1]
+      drag: [1, -1]
+    'dui': 
+      pos: [0, 0.5]
+      drag: [1, 0]
 
   
   
@@ -85,15 +101,26 @@ supImageEditor = ->
     startHeight = null
     start_x = null
     start_y = null
+    area_left = 0
+    area_top = 0
+    area_width = 0
+    area_height = 0
+    max_width = 0
+    max_height = 0
     corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
     
     for corner in corners
       corner.addEventListener 'mousedown', (e)->
-        $current_dragging_corner = corner
+        $current_dragging_corner = e.target
         start_x = e.clientX
         start_y = e.clientY
-        startWidth = $img_crop_area.clientWidth or 10
-        startHeight = $img_crop_area.clientHeight or 10
+        area_left = parseInt($img_crop_area.style.left) or 0
+        area_top = parseInt($img_crop_area.style.top) or 0
+        area_width = $img_crop_area.offsetWidth
+        area_height = $img_crop_area.offsetHeight
+        max_width = $img_editor.clientWidth - area_left
+        max_height = $img_editor.clientHeight - area_top
+        
         document.addEventListener 'mousemove', dragging
         document.addEventListener 'mouseup', dragstop
         e.preventDefault()
@@ -101,15 +128,38 @@ supImageEditor = ->
         
     dragging = (e)->
       return unless $img_crop_area
-      limit_left = parseInt($img_crop_area.style.left) or 0
-      limit_top = parseInt($img_crop_area.style.top) or 0
-      new_width = min(startWidth + e.clientX - start_x,
-                      $img_editor.clientWidth - limit_left)
-      new_height = min(startHeight + e.clientY - start_y,
-                       $img_editor.clientHeight- limit_top)
-      $img_crop_area.style.width = px(max(new_width, $options.crop_min_size))
-      $img_crop_area.style.height = px(max(new_height, $options.crop_min_size))
+      
+      move_x = e.clientX - start_x
+      move_y = e.clientY - start_y
+
+      ori = $current_dragging_corner.getAttribute(IMG_CORNER)
+      dim = ORIENTATION[ori]
+      
+      move_x = move_x*dim.drag[0] if dim.drag[0]
+      move_y = move_y*dim.drag[1] if dim.drag[1]
+
+      top = min(
+        max(area_top+move_y, 0),
+        $img_editor.clientHeight-$options.crop_min_size
+      )
+      
+      left = min(
+        max(area_left+move_x, 0),
+        $img_editor.clientWidth-$options.crop_min_size
+      )
+      width = max(area_width - left, $options.crop_min_size)
+      height = max(area_height - top, $options.crop_min_size)
+
+      if dim.drag[0]
+        $img_crop_area.style.left = px(left) if dim.drag[0] > 0
+        $img_crop_area.style.width = px(width)
+
+      if dim.drag[1]
+        $img_crop_area.style.top = px(top) if dim.drag[1] > 0
+        $img_crop_area.style.height = px(height)
+
       pos_corners()
+      
       e.preventDefault()
       e.stopPropagation()
       
@@ -148,8 +198,8 @@ supImageEditor = ->
     crop.style.position = 'absolute'
     crop.style.top = '0'
     crop.style.left = '0'
-    crop.style.width = '100%'
-    crop.style.height = '100%'
+    crop.style.right = '0'
+    crop.style.bottom = '0'
     crop.style.backgroundColor = 'green'
     img_editor.appendChild(crop)
 
@@ -173,8 +223,8 @@ supImageEditor = ->
     for corner in corners
       ori = corner.getAttribute(IMG_CORNER)
       dim = ORIENTATION[ori]
-      corner.style.left = px(int(_width * dim[0]) - corner_offset)
-      corner.style.top = px(int(_height * dim[1]) - corner_offset)
+      corner.style.left = px(int(_width * dim.pos[0]) - corner_offset)
+      corner.style.top = px(int(_height * dim.pos[1]) - corner_offset)
 
     
   output = 
