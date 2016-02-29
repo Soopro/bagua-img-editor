@@ -198,8 +198,8 @@ supImageEditor = ->
     crop.style.position = 'absolute'
     crop.style.top = '0'
     crop.style.left = '0'
-    crop.style.right = '0'
-    crop.style.bottom = '0'
+    crop.style.width = '100%'
+    crop.style.height = '100%'
     crop.style.backgroundColor = 'green'
     img_editor.appendChild(crop)
 
