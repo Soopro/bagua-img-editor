@@ -69,47 +69,61 @@ supImageEditor = ->
     
     area_left = 0
     area_top = 0
+    area_bottom = 0
+    area_right = 0
+    
     area_width = 0
     area_height = 0
     
     $img_crop_area.addEventListener 'mousedown', (e)->
       start_y = e.clientY
       start_x = e.clientX
+
       area_left = parseInt($img_crop_area.style.left) or 0
       area_top = parseInt($img_crop_area.style.top) or 0
-      area_width = $img_crop_area.clientWidth
-      area_height = $img_crop_area.clientHeight
-      console.log area_width
+      area_bottom = parseInt($img_crop_area.style.bottom) or 0
+      area_right = parseInt($img_crop_area.style.right) or 0
+      
+      area_width = parseInt($img_crop_area.style.width)
+      area_height = parseInt($img_crop_area.style.height)
+
       document.addEventListener 'mousemove', dragging
       document.addEventListener 'mouseup', dragstop
-
+      e.preventDefault()
+      e.stopPropagation()
+      
     dragging = (e)->
       new_top = max(area_top + e.clientY - start_y, 0)
       new_left = max(area_left + e.clientX - start_x, 0)
-
+      new_right = max($img_editor.clientWidth - new_left - area_width, 0)
+      new_bottom = max($img_editor.clientHeight - new_top - area_height, 0)
+      console.log area_height
       if (new_top + area_height) > $img_editor.clientHeight
         new_top = $img_editor.clientHeight - area_height
       
       if (new_left + area_width) > $img_editor.clientWidth
         new_left = $img_editor.clientWidth - area_width
       
-      console.log area_width
-      new_right = new_left + area_width
-      new_bottom = new_top + area_height
-
+      
       $img_crop_area.style.top = px(new_top)
       $img_crop_area.style.left = px(new_left)
-      $img_crop_area.style.bottom = px(new_bottom)
       $img_crop_area.style.right = px(new_right)
-
+      $img_crop_area.style.bottom = px(new_bottom)
+      
+      pos_crop_area(false)
+      e.preventDefault()
+      e.stopPropagation()
+      
     dragstop = (e)->
       document.removeEventListener 'mousemove', dragging
       document.removeEventListener 'mouseup', dragstop
-
+      e.preventDefault()
+      e.stopPropagation()
 
   init_drag_corner_hanlders = ->
     start_x = null
     start_y = null
+    
     area_left = 0
     area_top = 0
     area_bottom = 0
@@ -126,10 +140,12 @@ supImageEditor = ->
         current_corner = e.target
         start_x = e.clientX
         start_y = e.clientY
+        
         area_left = parseInt($img_crop_area.style.left) or 0
         area_top = parseInt($img_crop_area.style.top) or 0
         area_bottom = parseInt($img_crop_area.style.bottom) or 0
         area_right = parseInt($img_crop_area.style.right) or 0
+        
         max_width = $img_editor.clientWidth - area_left
         max_height = $img_editor.clientHeight - area_top
         
@@ -145,8 +161,13 @@ supImageEditor = ->
       move_y = e.clientY - start_y
 
       ori = current_corner.getAttribute(IMG_CORNER)
-      dim = ORIENTATION[ori]
+      min_size = $options.crop_min_size
       
+      top = null
+      left = null
+      right = null
+      bottom = null
+
       if ori == 'qian'
         left = between(area_left + move_x, 0, max_width)
         top = between(area_top + move_y, 0, max_height)
@@ -166,32 +187,12 @@ supImageEditor = ->
         left = between(area_left + move_x, 0, max_width)
         bottom = between(area_bottom - move_y, 0, max_height)
       else if ori == 'dui'
-        left = between(area_left + move_x, 0, max_width)
-
-      $img_crop_area.style.left = px(left) if left
-      $img_crop_area.style.top = px(top) if top
-      $img_crop_area.style.bottom = px(bottom) if bottom
-      $img_crop_area.style.right = px(right) if right
+        left = between(area_left + move_x, 0, max_width) 
       
-      # top = min(
-      #   max(area_top+move_y, 0),
-      #   $img_editor.clientHeight-$options.crop_min_size
-      # )
-      #
-      # left = min(
-      #   max(area_left+move_x, 0),
-      #   $img_editor.clientWidth-$options.crop_min_size
-      # )
-      # width = max(max_width - left, $options.crop_min_size)
-      # height = max(max_height - top, $options.crop_min_size)
-      #
-      # if dim.drag[0]
-      #   $img_crop_area.style.left = px(left) if dim.drag[0] > 0
-      #   # $img_crop_area.style.width = px(width)
-      #
-      # if dim.drag[1]
-      #   $img_crop_area.style.top = px(top) if dim.drag[1] > 0
-      #   # $img_crop_area.style.height = px(height)
+      $img_crop_area.style.left = px(left) if left isnt null
+      $img_crop_area.style.top = px(top) if top isnt null
+      $img_crop_area.style.bottom = px(bottom) if bottom isnt null
+      $img_crop_area.style.right = px(right) if right isnt null
 
       pos_crop_area()
       
@@ -237,7 +238,7 @@ supImageEditor = ->
     crop.style.bottom = '0'
     crop.style.backgroundColor = 'green'
     img_editor.appendChild(crop)
-
+    index = 0
     for ori,dim of ORIENTATION
       corner = document.createElement('DIV')
       corner.setAttribute(IMG_CORNER, ori)
@@ -245,8 +246,10 @@ supImageEditor = ->
       corner.style.width = px($options.corner_size)
       corner.style.height = px($options.corner_size)
       corner.style.cursor = 'pointer'
+      corner.style.zIndex = 90+index
       corner.style.backgroundColor = 'blue'
       crop.appendChild(corner)
+      index++
   
     return crop
   
@@ -254,20 +257,32 @@ supImageEditor = ->
     _width = $img_crop_area.clientWidth
     _height = $img_crop_area.clientHeight
     corner_offset = int($options.corner_size / 2)
+    
+    left = parseInt($img_crop_area.style.left) or 0
+    right = parseInt($img_crop_area.style.right) or 0
+    top = parseInt($img_crop_area.style.top) or 0
+    bottom = parseInt($img_crop_area.style.bottom) or 0
+    
+    width = max($img_editor.clientWidth-left-right, $options.crop_min_size)
+    height = max($img_editor.clientHeight-top-bottom, $options.crop_min_size)
+    $img_crop_area.style.width = px(width)
+    $img_crop_area.style.height = px(height)
+
+    left = between(left, 0, $img_editor.clientWidth-$options.crop_min_size)
+    top = between(top, 0, $img_editor.clientHeight-$options.crop_min_size)
+
+    $img_crop_area.style.left = px(left)
+    $img_crop_area.style.right = px(right)
+    $img_crop_area.style.top = px(top)
+    $img_crop_area.style.bottom = px(bottom)
+    
     corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
     for corner in corners
       ori = corner.getAttribute(IMG_CORNER)
       dim = ORIENTATION[ori]
       corner.style.left = px(int(_width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(_height * dim.pos[1]) - corner_offset)
-    
-    left = parseInt($img_crop_area.style.left)
-    right = parseInt($img_crop_area.style.right)
-    top = parseInt($img_crop_area.style.top)
-    bottom = parseInt($img_crop_area.style.bottom)
-    $img_crop_area.style.width = px($img_editor.clientWidth - left - right)
-    $img_crop_area.style.height = px($img_editor.clientHeight - top - bottom)
-    
+
     
   output = 
     init: init
@@ -309,6 +324,7 @@ min = (number1, number2)->
 
 between = (number, min_number, max_number)->
   return min(max(number, min_number), max_number)
+
 
 unless root.supImageEditor
   root.supImageEditor = supImageEditor
