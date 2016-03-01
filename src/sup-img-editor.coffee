@@ -171,8 +171,6 @@ supImageEditor = ->
       right = null
       bottom = null
       
-      console.log "left:", limit_left, "top:", limit_top
-      
       if ori == 'qian'
         left = between(area_left + move_x, 0, limit_left)
         top = between(area_top + move_y, 0, limit_top)
@@ -260,15 +258,8 @@ supImageEditor = ->
     return crop
   
   pos_crop_area = ->
-    _width = $img_crop_area.clientWidth
-    _height = $img_crop_area.clientHeight
     corner_offset = int($options.corner_size / 2)
     corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
-    for corner in corners
-      ori = corner.getAttribute(IMG_CORNER)
-      dim = ORIENTATION[ori]
-      corner.style.left = px(int(_width * dim.pos[0]) - corner_offset)
-      corner.style.top = px(int(_height * dim.pos[1]) - corner_offset)
 
     left = parseInt($img_crop_area.style.left) or 0
     right = parseInt($img_crop_area.style.right) or 0
@@ -279,7 +270,12 @@ supImageEditor = ->
     height = $img_editor.clientHeight-top-bottom
     $img_crop_area.style.width = px(width)
     $img_crop_area.style.height = px(height)
-  
+
+    for corner in corners
+      ori = corner.getAttribute(IMG_CORNER)
+      dim = ORIENTATION[ori]
+      corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
+      corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
 
     
   output = 
