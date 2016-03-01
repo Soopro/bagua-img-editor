@@ -117,8 +117,7 @@ supImageEditor = ->
     dragstop = (e)->
       document.removeEventListener 'mousemove', dragging
       document.removeEventListener 'mouseup', dragstop
-      e.preventDefault()
-      e.stopPropagation()
+
 
   init_drag_corner_hanlders = ->
     start_x = null
@@ -202,8 +201,6 @@ supImageEditor = ->
     dragstop = (e)->
       document.removeEventListener 'mousemove', dragging
       document.removeEventListener 'mouseup', dragstop
-      e.preventDefault()
-      e.stopPropagation()
 
 # ---------------- Functions --------------
   init = (editor, opt)->
