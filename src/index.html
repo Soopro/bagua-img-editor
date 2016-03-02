@@ -7,16 +7,15 @@
 </head>
 <body>
   <h1 style="text-align:center">Sup Image Editor</h1>
-  <div style="width:100%;height:1000px;background:#ccc;margin:0 auto;">
+  <div style="width:100%;height:800px;background:#ccc;margin:0 auto;">
     <div name="sup-img-editor"
-         style="width:50%;background:grey;position:relative;margin:0 auto;">
+         style="width:50%;height:50%;background:grey;position:relative;margin:0 auto;">
      </div>
   </div>
   <script src="bagua-img-editor.js"></script>
   <script>
-  var img_editor = baguaImageEditor();
-  img_editor.init('sup-img-editor');
-  img_editor.load('sample.jpg')
+  var img_editor = new baguaImageEditor('sup-img-editor');
+  img_editor.load('sample.jpg');
   </script>
 </body>
 </html>

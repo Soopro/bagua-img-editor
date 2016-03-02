@@ -35,7 +35,7 @@ int = (number, type)->
 
 px = (number)->
   if typeof number is 'number'
-    return number+'px'
+    return int(number)+'px'
   else
     return number
 
@@ -65,7 +65,7 @@ getStyleSheet = (element, pseudo)->
 # Module
 # ---------------------------------------
 
-baguaImageEditor = ->
+baguaImageEditor = (editor, opt)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
   ver = '0.1.0'
@@ -111,7 +111,7 @@ baguaImageEditor = ->
   
 # ---------------- Handlers --------------
 
-  init_crop_area_hanlder = ->
+  add_crop_area_hanlder = ->
     start_x = null
     start_y = null
     
@@ -122,8 +122,8 @@ baguaImageEditor = ->
     
     area_width = 0
     area_height = 0
-    
-    $img_crop_area.addEventListener 'mousedown', (e)->
+
+    dragstart = (e)->
       if $current_corner
         return
       start_y = e.clientY
@@ -137,8 +137,8 @@ baguaImageEditor = ->
       area_width = parseInt($img_crop_area.style.width)
       area_height = parseInt($img_crop_area.style.height)
 
-      document.addEventListener 'mousemove', dragging
-      document.addEventListener 'mouseup', dragstop
+      addListener document, 'mousemove', dragging
+      addListener document, 'mouseup', dragstop
       e.preventDefault()
       e.stopPropagation()
       
@@ -169,8 +169,11 @@ baguaImageEditor = ->
       document.removeEventListener 'mouseup', dragstop
       e.preventDefault()
       e.stopPropagation()
+    
+    addListener $img_crop_area, 'mousedown', dragstart
+      
 
-  init_drag_corner_hanlders = ->
+  add_drag_corner_hanlders = ->
     start_x = null
     start_y = null
     
@@ -190,32 +193,34 @@ baguaImageEditor = ->
     corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
     
     for corner in corners
-      corner.addEventListener 'mousedown', (e)->
-        if not e.target.hasAttribute(IMG_CORNER)
-          return
-        $current_corner = e.target
-        start_x = e.clientX
-        start_y = e.clientY
-        area_left = parseInt($img_crop_area.style.left) or 0
-        area_top = parseInt($img_crop_area.style.top) or 0
-        area_bottom = parseInt($img_crop_area.style.bottom) or 0
-        area_right = parseInt($img_crop_area.style.right) or 0
-        
-        max_width = $img_editor.clientWidth
-        max_height = $img_editor.clientHeight
-        
-        min_size = $options.crop_min_size
-        
-        limit_left = max_width-area_right-min_size
-        limit_right = max_width-area_left-min_size
-        limit_top = max_height-area_bottom-min_size
-        limit_bottom = max_height-area_top-min_size
-        
-        document.addEventListener 'mousemove', dragging
-        document.addEventListener 'mouseup', dragstop
-        e.preventDefault()
-        e.stopPropagation()
-        
+      addListener corner, 'mousedown', dragstart
+    
+    dragstart = (e)->
+      if not e.target.hasAttribute(IMG_CORNER)
+        return
+      $current_corner = e.target
+      start_x = e.clientX
+      start_y = e.clientY
+      area_left = parseInt($img_crop_area.style.left) or 0
+      area_top = parseInt($img_crop_area.style.top) or 0
+      area_bottom = parseInt($img_crop_area.style.bottom) or 0
+      area_right = parseInt($img_crop_area.style.right) or 0
+      
+      max_width = $current_img.clientWidth
+      max_height = $current_img.clientHeight
+      
+      min_size = $options.crop_min_size
+      
+      limit_left = max_width-area_right-min_size
+      limit_right = max_width-area_left-min_size
+      limit_top = max_height-area_bottom-min_size
+      limit_bottom = max_height-area_top-min_size
+      
+      addListener document, 'mousemove', dragging
+      addListener document, dragstop
+      e.preventDefault()
+      e.stopPropagation()
+    
     dragging = (e)->
       return unless $img_crop_area
       
@@ -275,50 +280,54 @@ baguaImageEditor = ->
     #   $img_canvas_bg.style.visibility = ''
     #   window.clearTimeout($reisze_timer_id)
     # , 500
-    
+  
+  _eventListeners = []
 
-# ---------------- Functions --------------
-  init = (editor, opt)->
+  addListener = (node, event, handler, capture)->
+    _eventListeners.push {
+      node: node
+      event: event
+      hanlder: handler
+      capture: capture
+    }
+    node.addEventListener event, handler, capture
+    return
+
+  removeListeners = (node, event) ->
+    remove_idxs = []
+    for listener, idx in _eventListeners
+      if event == listener.event and node == listener.node
+        node.removeEventListener event, listener.handler
+        remove_idxs.push idx
+    _eventListeners.slice(remove_idxs)
+    return
+  
+  removeAllListeners = ->
+    for listener, idx in _eventListeners
+      listener.node.removeEventListener listener.event, listener.handler
+    _eventListeners.length = 0
+    return
+  
+
+# ---------------- Functions --------------  
+  set_image = (img_editor, img) ->
+    img.style.position = 'relative'
+    img_editor.appendChild(img)
+    $current_img = img
+    pos_image_area()
+    return img
     
-    if typeof editor is 'string'
-      $img_editor = document.querySelector('[name='+ editor + ']')
-    else if isHTMLElement(editor)
-      $img_editor = editor
-    
-    if not $img_editor
-      console.error 'Init image editor failed!!'
+  set_crop = (img_editor)->
+    if not $current_img
       return
-    
-    if typeof opt is "object"
-      for k,v of opt
-        $options[k] = v
-
-    $img_editor.setAttribute(IMG_EDITOR_ID, now)
-    $img_editor.style.maxWidth = "100%"
-    $img_editor.style.maxHeight = "100%"
-    $img_editor.style.fontSize = 0
-    $current_img = set_image($img_editor)
-    window.addEventListener('resize', resize_handler) if window
-    
-  set_image = (img_editor)->
-    image = document.createElement('img')
-    image.style.maxWidth = '100%'
-    image.style.maxHeight = '100%'
-    image.style.pointerEvents = 'none'
-    image.style.zoom = 1
-    image.style.opacity = 0.5
-    image.style.zIndex = 1
-    img_editor.appendChild(image)
-    return image
-    
-  set_crop = (img_editor, curr_img)->
     crop = document.createElement('DIV')
     crop.setAttribute(IMG_CROP, now)
     crop.style.position = 'absolute'
-    crop.style.top = '0'
-    crop.style.left = '0'
-    crop.style.right = '0'
-    crop.style.bottom = '0'
+    console.log $current_img.style.top
+    crop.style.top = $current_img.style.top
+    crop.style.left = $current_img.style.left
+    crop.style.right = $current_img.style.left
+    crop.style.bottom = $current_img.style.top
     crop.style.zIndex = 99
     img_editor.appendChild(crop)
 
@@ -334,11 +343,35 @@ baguaImageEditor = ->
       corner.style.backgroundColor = 'blue'
       crop.appendChild(corner)
       index++
-  
+
+    $img_crop_area = crop
+    pos_crop_area()
+    add_drag_corner_hanlders()
+    add_crop_area_hanlder()
+
     return crop
 
-  
+  pos_image_area = ->
+    if not $current_img
+      return
+    editor_w = $img_editor.clientWidth
+    editor_h = $img_editor.clientHeight
+    img_w = $current_img.width
+    img_h = $current_img.height
+    if editor_w > editor_h
+      $current_img.width = editor_w
+      $current_img.height = int(img_h * editor_w / img_w)
+    else
+      $current_img.width = int(img_w * editor_h / img_h)
+      $current_img.height = editor_h
+
+    $current_img.style.top = px((editor_h - $current_img.height) / 2)
+    $current_img.style.left = px((editor_w - $current_img.width) / 2)
+
+    
   pos_crop_area = ->
+    if not $current_img
+      return
     corner_offset = int($options.corner_size / 2)
     corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
 
@@ -346,9 +379,9 @@ baguaImageEditor = ->
     right = parseInt($img_crop_area.style.right) or 0
     top = parseInt($img_crop_area.style.top) or 0
     bottom = parseInt($img_crop_area.style.bottom) or 0
-    
-    width = $img_editor.clientWidth-left-right
-    height = $img_editor.clientHeight-top-bottom
+
+    width = $current_img.width-left-right
+    height = $current_img.height-top-bottom
     $img_crop_area.style.width = px(width)
     $img_crop_area.style.height = px(height)
     
@@ -358,6 +391,17 @@ baguaImageEditor = ->
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
+  
+  destroy = ->
+    if not $img_editor
+      throw project_name+': Image Editor not inited!'
+    removeAllListeners()
+    $img_editor.innerHTML = ''
+    $reisze_timer_id = null
+    $current_img = null
+    $current_corner = null
+    $img_editor = null
+    $img_crop_area = null
     
   load = (img_src)->
     if not $img_editor
@@ -365,22 +409,49 @@ baguaImageEditor = ->
 
     if typeof img_src isnt 'string'
       throw project_name+': Invalid image!'
+    
+    img = new Image()
+    img.src = img_src
+    img.onload = (e)->
+      if not $img_editor
+        return
+      set_image($img_editor, img)
+      set_crop($img_editor)
   
-    $current_img.src = img_src
-    $current_img.onload = (e)->
-      $img_crop_area = set_crop($img_editor, $current_img)
-      init_drag_corner_hanlders()
-      init_crop_area_hanlder()
-      pos_crop_area()
+  
+  # ---------------- Init --------------
+  init = (editor, opt)->
+    if typeof editor is 'string'
+      $img_editor = document.querySelector('[name='+ editor + ']')
+    else if isHTMLElement(editor)
+      $img_editor = editor
+    
+    if not window
+      throw project_name+': For browsers only!!'
+    
+    if not $img_editor
+      throw project_name+': Init image editor failed!!'
+      return
+    
+    if typeof opt is "object"
+      for k,v of opt
+        $options[k] = v
 
-
+    $img_editor.setAttribute(IMG_EDITOR_ID, now)
+    $img_editor.dataset['inited'] = true
+    addListener window, 'resize', resize_handler
+  
+  if editor
+    init(editor, opt)
+  
   # ---------------- Output --------------
 
-  output = 
+  methods = 
     init: init
     load: load
+    destroy: destroy
   
-  return output
+  return methods
     
 
 
