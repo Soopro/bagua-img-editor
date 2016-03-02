@@ -78,6 +78,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   
   $reisze_timer_id = null
   
+  $source_img = null
   $current_img = null
   $current_corner = null
   $current_area = null
@@ -274,8 +275,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       addListener corner, 'mousedown', dragstart
       
     return
-    
-    
+ 
     
   resize_handler = (e)->
     pos_image()
@@ -313,9 +313,12 @@ baguaImageEditor = (editor, opt, is_debug)->
 
 # ---------------- Functions --------------  
   set_image = (img) ->
+    $source_img = img.cloneNode()
+
     img.style.maxWidth = '100%'
     img.style.maxHeight = '100%'
     img.style.position = 'relative'
+    img.style.pointerEvents = 'none'
     $img_editor.appendChild(img)
     $current_img = img
     pos_image()
@@ -339,6 +342,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     crop_container.style.width = '100%'
     crop_container.style.height = '100%'
     crop_container.style.overflow = 'hidden'
+    crop_container.style.pointerEvents = 'none'
     crop_container.style.background = 'orange' if debug
     $current_area.appendChild(crop_container)
 
@@ -443,15 +447,37 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
-  
+
+  capture = ->
+    precent = $current_img.width / $source_img.width
+    
+    width = int((parseInt($crop_container.style.width) or 0) / precent)
+    height = int((parseInt($crop_container.style.height) or 0) / precent)
+    top = int((parseInt($crop_container.style.top) or 0) / precent)
+    left = int((parseInt($crop_container.style.left) or 0) / precent)
+
+    canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    
+    canvas_context = canvas.getContext('2d')
+    canvas_context.drawImage($source_img, left, top, width, height, 
+                                          0, 0, width, height)
+    
+    return canvas.toDataURL()
+
   destroy = ->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
     removeAllListeners()
     $img_editor.innerHTML = ''
     $reisze_timer_id = null
+    $source_img = null
     $current_img = null
     $current_corner = null
+    $current_area = null
+    $crop_container = null
+    $cropped_img = null
     $img_editor = null
     $img_cropper = null
     
@@ -503,6 +529,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   methods = 
     init: init
     load: load
+    capture: capture
     destroy: destroy
   
   return methods
