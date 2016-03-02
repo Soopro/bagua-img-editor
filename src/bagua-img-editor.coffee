@@ -17,20 +17,23 @@ root = if is_exports then exports else this
 
 
 supImageEditor = ->
-# ---------------- Variables --------------
+  # ---------------- Variables --------------
+  project_name = 'BaguaImgEditor'
   ver = '0.1.0'
   now = Date.now()
-  
+
   $options = 
     corner_size: 16
     crop_min_size: 32
 
   $img_editor = null
+  $img_canvas = null
   $img_crop_area = null
   $current_corner = null
   
   IMG_EDITOR_ID = 'img-editor-id'
   IMG_CROP = 'img-crop-area'
+  IMG_CANVAS = 'img-cavnas'
   IMG_CORNER = 'img-crop-corner'
   IMG_CANVAS = 'img-editor-canvas'
   
@@ -135,6 +138,8 @@ supImageEditor = ->
     
     for corner in corners
       corner.addEventListener 'mousedown', (e)->
+        if not e.target.hasAttribute(IMG_CORNER)
+          return
         $current_corner = e.target
         start_x = e.clientX
         start_y = e.clientY
@@ -224,13 +229,24 @@ supImageEditor = ->
     if typeof opt is "object"
       for k,v of opt
         $options[k] = v
-    
+
     $img_editor.setAttribute(IMG_EDITOR_ID, now)
+    $img_canvas = set_canvas($img_editor)
+    $img_bg_canvas = set_canvas($img_editor)
     $img_crop_area = set_crop($img_editor)
+
     init_drag_corner_hanlders()
     init_crop_area_hanlder()
     pos_crop_area()
-    
+  
+  set_canvas = (img_editor)->
+    canvas = document.createElement('CANVAS')
+    canvas.setAttribute(IMG_CANVAS, now)
+    canvas.style.position = 'absolute'
+    canvas.style.width = '100%'
+    canvas.style.height = '100%'
+    img_editor.appendChild(canvas)
+
     
   set_crop = (img_editor)->
     crop = document.createElement('DIV')
@@ -241,7 +257,9 @@ supImageEditor = ->
     crop.style.right = '0'
     crop.style.bottom = '0'
     crop.style.backgroundColor = 'green'
+    crop.style.zIndex = 99
     img_editor.appendChild(crop)
+    
     index = 0
     for ori,dim of ORIENTATION
       corner = document.createElement('DIV')
@@ -276,13 +294,49 @@ supImageEditor = ->
       dim = ORIENTATION[ori]
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
-
+  
+  load_to_canvas = (canvas, image, grayscale)->
+    canvasContext = canvas.getContext('2d')
+    pos_x = canvas.width - image.width
+    pos_y = canvas.height - image.height
+    canvasContext.drawImage(image, pos_x, pos_y)
     
+    if not grayscale
+      return
+      img_pixels = canvasContext.getImageData(0, 0, image.width, image.height)
+      while y < imageData.height
+        while x < imageData.width
+          i = y * 4 * imgPixels.width + x * 4
+          rgb = (imgPixels.data[i]+imgPixels.data[i+1]+imgPixels.data[i+2])
+          avg = rgb / 3
+          imgPixels.data[i] = avg
+          imgPixels.data[i + 1] = avg
+          imgPixels.data[i + 2] = avg
+          x++
+        y++
+      canvasContext.putImageData(
+        img_pixels, 0, 0, 0, 0, img_pixels.width, img_pixels.height
+      )
+
+    return canvas.toDataURL()
+    
+  load = (image)->
+    if typeof image is 'string'
+      image = document.querySelector(image)
+    else if not isHTMLElement(image)
+      throw project_name+': Invalid image!'
+    
+  
+  # ---------------- Output --------------
+
   output = 
     init: init
   
   return output
     
+# ---------------------------------------
+# Utils
+# ---------------------------------------
 
 isHTMLElement = (o) ->
   if not o
@@ -292,11 +346,15 @@ isHTMLElement = (o) ->
   result =  is_obj and is_obj_type
   return result
 
-int = (number, ceil)->
-  if not ceil
-    return Math.floor(number)
-  else
+int = (number, type)->
+  if type == 'ceil' or type == -1
     return Math.ceil(number)
+  else if type == 'floor' or type == 1
+    return Math.floor(number)
+  try
+    return Math.round(number)
+  catch
+    parseInt(number)
 
 px = (number)->
   if typeof number is 'number'
@@ -319,6 +377,12 @@ min = (number1, number2)->
 between = (number, min_number, max_number)->
   return min(max(number, min_number), max_number)
 
+
+getStyleSheet = (element, pseudo)->
+  if root.getComputedStyle
+    return root.getComputedStyle(element, pseudo)
+  if element.currentStyle
+    return element.currentStyle
 
 unless root.supImageEditor
   root.supImageEditor = supImageEditor
