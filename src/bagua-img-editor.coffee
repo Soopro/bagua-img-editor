@@ -11,12 +11,61 @@
 # <div sup-image-editor></div>
 # ------------------------------->
 
-is_exports = typeof exports isnt "undefined" and exports isnt null
-root = if is_exports then exports else this
+# ---------------------------------------
+# Utils
+# ---------------------------------------
+
+isHTMLElement = (o) ->
+  if not o
+    return false
+  is_obj = o and typeof o == 'object' and o != null
+  is_obj_type = o.nodeType is 1 and typeof o.nodeName is 'string'
+  result =  is_obj and is_obj_type
+  return result
+
+int = (number, type)->
+  if type == 'ceil' or type == -1
+    return Math.ceil(number)
+  else if type == 'floor' or type == 1
+    return Math.floor(number)
+  try
+    return Math.round(number)
+  catch
+    parseInt(number)
+
+px = (number)->
+  if typeof number is 'number'
+    return number+'px'
+  else
+    return number
+
+max = (number1, number2)->
+  if number1 > number2
+    return number1
+  else
+    return number2
+
+min = (number1, number2)->
+  if number1 < number2
+    return number1
+  else
+    return number2
+
+between = (number, min_number, max_number)->
+  return min(max(number, min_number), max_number)
 
 
+getStyleSheet = (element, pseudo)->
+  if window.getComputedStyle
+    return window.getComputedStyle(element, pseudo)
+  if element.currentStyle
+    return element.currentStyle
 
-supImageEditor = ->
+# ---------------------------------------
+# Module
+# ---------------------------------------
+
+baguaImageEditor = ->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
   ver = '0.1.0'
@@ -25,17 +74,21 @@ supImageEditor = ->
   $options = 
     corner_size: 16
     crop_min_size: 32
-
-  $img_editor = null
-  $img_canvas = null
-  $img_crop_area = null
+  
+  $reisze_timer_id = null
+  
+  $current_img = null
   $current_corner = null
+  
+  $img_editor = null
+  $img_crop_area = null
+  
   
   IMG_EDITOR_ID = 'img-editor-id'
   IMG_CROP = 'img-crop-area'
-  IMG_CANVAS = 'img-cavnas'
   IMG_CORNER = 'img-crop-corner'
   IMG_CANVAS = 'img-editor-canvas'
+  IMG_CANVAS_BG = 'img-editor-cavnas-bg'
   
   ORIENTATION = 
     'qian': 
@@ -107,7 +160,7 @@ supImageEditor = ->
       $img_crop_area.style.right = px(new_right)
       $img_crop_area.style.bottom = px(new_bottom)
       
-      pos_crop_area(false)
+      pos_crop_area()
       e.preventDefault()
       e.stopPropagation()
       
@@ -214,6 +267,16 @@ supImageEditor = ->
       e.preventDefault()
       e.stopPropagation()
 
+  resize_handler = (e)->
+    pos_crop_area()
+    # window.clearTimeout($reisze_timer_id) if $reisze_timer_id
+    # $reisze_timer_id = window.setTimeout ->
+    #   $img_canvas.style.visibility = ''
+    #   $img_canvas_bg.style.visibility = ''
+    #   window.clearTimeout($reisze_timer_id)
+    # , 500
+    
+
 # ---------------- Functions --------------
   init = (editor, opt)->
     
@@ -231,24 +294,24 @@ supImageEditor = ->
         $options[k] = v
 
     $img_editor.setAttribute(IMG_EDITOR_ID, now)
-    $img_canvas = set_canvas($img_editor)
-    $img_bg_canvas = set_canvas($img_editor)
-    $img_crop_area = set_crop($img_editor)
-
-    init_drag_corner_hanlders()
-    init_crop_area_hanlder()
-    pos_crop_area()
-  
-  set_canvas = (img_editor)->
-    canvas = document.createElement('CANVAS')
-    canvas.setAttribute(IMG_CANVAS, now)
-    canvas.style.position = 'absolute'
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
-    img_editor.appendChild(canvas)
-
+    $img_editor.style.maxWidth = "100%"
+    $img_editor.style.maxHeight = "100%"
+    $img_editor.style.fontSize = 0
+    $current_img = set_image($img_editor)
+    window.addEventListener('resize', resize_handler) if window
     
-  set_crop = (img_editor)->
+  set_image = (img_editor)->
+    image = document.createElement('img')
+    image.style.maxWidth = '100%'
+    image.style.maxHeight = '100%'
+    image.style.pointerEvents = 'none'
+    image.style.zoom = 1
+    image.style.opacity = 0.5
+    image.style.zIndex = 1
+    img_editor.appendChild(image)
+    return image
+    
+  set_crop = (img_editor, curr_img)->
     crop = document.createElement('DIV')
     crop.setAttribute(IMG_CROP, now)
     crop.style.position = 'absolute'
@@ -256,10 +319,9 @@ supImageEditor = ->
     crop.style.left = '0'
     crop.style.right = '0'
     crop.style.bottom = '0'
-    crop.style.backgroundColor = 'green'
     crop.style.zIndex = 99
     img_editor.appendChild(crop)
-    
+
     index = 0
     for ori,dim of ORIENTATION
       corner = document.createElement('DIV')
@@ -274,6 +336,7 @@ supImageEditor = ->
       index++
   
     return crop
+
   
   pos_crop_area = ->
     corner_offset = int($options.corner_size / 2)
@@ -288,101 +351,38 @@ supImageEditor = ->
     height = $img_editor.clientHeight-top-bottom
     $img_crop_area.style.width = px(width)
     $img_crop_area.style.height = px(height)
-
+    
     for corner in corners
       ori = corner.getAttribute(IMG_CORNER)
       dim = ORIENTATION[ori]
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
-  
-  load_to_canvas = (canvas, image, grayscale)->
-    canvasContext = canvas.getContext('2d')
-    pos_x = canvas.width - image.width
-    pos_y = canvas.height - image.height
-    canvasContext.drawImage(image, pos_x, pos_y)
+    return
     
-    if not grayscale
-      return
-      img_pixels = canvasContext.getImageData(0, 0, image.width, image.height)
-      while y < imageData.height
-        while x < imageData.width
-          i = y * 4 * imgPixels.width + x * 4
-          rgb = (imgPixels.data[i]+imgPixels.data[i+1]+imgPixels.data[i+2])
-          avg = rgb / 3
-          imgPixels.data[i] = avg
-          imgPixels.data[i + 1] = avg
-          imgPixels.data[i + 2] = avg
-          x++
-        y++
-      canvasContext.putImageData(
-        img_pixels, 0, 0, 0, 0, img_pixels.width, img_pixels.height
-      )
+  load = (img_src)->
+    if not $img_editor
+      throw project_name+': Image Editor not inited!'
 
-    return canvas.toDataURL()
-    
-  load = (image)->
-    if typeof image is 'string'
-      image = document.querySelector(image)
-    else if not isHTMLElement(image)
+    if typeof img_src isnt 'string'
       throw project_name+': Invalid image!'
-    
   
+    $current_img.src = img_src
+    $current_img.onload = (e)->
+      $img_crop_area = set_crop($img_editor, $current_img)
+      init_drag_corner_hanlders()
+      init_crop_area_hanlder()
+      pos_crop_area()
+
+
   # ---------------- Output --------------
 
   output = 
     init: init
+    load: load
   
   return output
     
-# ---------------------------------------
-# Utils
-# ---------------------------------------
-
-isHTMLElement = (o) ->
-  if not o
-    return false
-  is_obj = o and typeof o == 'object' and o != null
-  is_obj_type = o.nodeType is 1 and typeof o.nodeName is 'string'
-  result =  is_obj and is_obj_type
-  return result
-
-int = (number, type)->
-  if type == 'ceil' or type == -1
-    return Math.ceil(number)
-  else if type == 'floor' or type == 1
-    return Math.floor(number)
-  try
-    return Math.round(number)
-  catch
-    parseInt(number)
-
-px = (number)->
-  if typeof number is 'number'
-    return number+'px'
-  else
-    return number
-
-max = (number1, number2)->
-  if number1 > number2
-    return number1
-  else
-    return number2
-
-min = (number1, number2)->
-  if number1 < number2
-    return number1
-  else
-    return number2
-
-between = (number, min_number, max_number)->
-  return min(max(number, min_number), max_number)
 
 
-getStyleSheet = (element, pseudo)->
-  if root.getComputedStyle
-    return root.getComputedStyle(element, pseudo)
-  if element.currentStyle
-    return element.currentStyle
-
-unless root.supImageEditor
-  root.supImageEditor = supImageEditor
+unless window.baguaImageEditor
+  window.baguaImageEditor = baguaImageEditor
