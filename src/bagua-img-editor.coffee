@@ -65,12 +65,13 @@ getStyleSheet = (element, pseudo)->
 # Module
 # ---------------------------------------
 
-baguaImageEditor = (editor, opt)->
+baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
   ver = '0.1.0'
   now = Date.now()
-
+  debug = false
+  
   $options = 
     corner_size: 16
     crop_min_size: 32
@@ -79,16 +80,19 @@ baguaImageEditor = (editor, opt)->
   
   $current_img = null
   $current_corner = null
+  $current_area = null
+  
+  $crop_container = null
+  $cropped_img = null
   
   $img_editor = null
-  $img_crop_area = null
+  $img_cropper = null
   
   
-  IMG_EDITOR_ID = 'img-editor-id'
-  IMG_CROP = 'img-crop-area'
-  IMG_CORNER = 'img-crop-corner'
-  IMG_CANVAS = 'img-editor-canvas'
-  IMG_CANVAS_BG = 'img-editor-cavnas-bg'
+  EDITOR_ID = 'bagua-editor-id'
+  CROP_CORNER = 'crop-corner'
+  
+
   
   ORIENTATION = 
     'qian': 
@@ -111,14 +115,12 @@ baguaImageEditor = (editor, opt)->
   
 # ---------------- Handlers --------------
 
-  add_crop_area_hanlder = ->
+  add_cropper_hanlders = ->
     start_x = null
     start_y = null
     
     area_left = 0
     area_top = 0
-    area_bottom = 0
-    area_right = 0
     
     area_width = 0
     area_height = 0
@@ -129,13 +131,11 @@ baguaImageEditor = (editor, opt)->
       start_y = e.clientY
       start_x = e.clientX
 
-      area_left = parseInt($img_crop_area.style.left) or 0
-      area_top = parseInt($img_crop_area.style.top) or 0
-      area_bottom = parseInt($img_crop_area.style.bottom) or 0
-      area_right = parseInt($img_crop_area.style.right) or 0
+      area_left = parseInt($img_cropper.style.left) or 0
+      area_top = parseInt($img_cropper.style.top) or 0
       
-      area_width = parseInt($img_crop_area.style.width)
-      area_height = parseInt($img_crop_area.style.height)
+      area_width = parseInt($img_cropper.style.width)
+      area_height = parseInt($img_cropper.style.height)
 
       addListener document, 'mousemove', dragging
       addListener document, 'mouseup', dragstop
@@ -145,22 +145,21 @@ baguaImageEditor = (editor, opt)->
     dragging = (e)->
       new_top = max(area_top + e.clientY - start_y, 0)
       new_left = max(area_left + e.clientX - start_x, 0)
-      new_right = max($img_editor.clientWidth - new_left - area_width, 0)
-      new_bottom = max($img_editor.clientHeight - new_top - area_height, 0)
+      new_right = max($current_area.clientWidth - new_left - area_width, 0)
+      new_bottom = max($current_area.clientHeight - new_top - area_height, 0)
 
-      if (new_top + area_height) > $img_editor.clientHeight
-        new_top = $img_editor.clientHeight - area_height
+      if (new_top + area_height) > $current_area.clientHeight
+        new_top = $current_area.clientHeight - area_height
       
-      if (new_left + area_width) > $img_editor.clientWidth
-        new_left = $img_editor.clientWidth - area_width
+      if (new_left + area_width) > $current_area.clientWidth
+        new_left = $current_area.clientWidth - area_width
+
+      $img_cropper.style.top = px(new_top)
+      $img_cropper.style.left = px(new_left)
+      $img_cropper.style.right = px(new_right)
+      $img_cropper.style.bottom = px(new_bottom)
       
-      
-      $img_crop_area.style.top = px(new_top)
-      $img_crop_area.style.left = px(new_left)
-      $img_crop_area.style.right = px(new_right)
-      $img_crop_area.style.bottom = px(new_bottom)
-      
-      pos_crop_area()
+      pos_cropper()
       e.preventDefault()
       e.stopPropagation()
       
@@ -170,8 +169,10 @@ baguaImageEditor = (editor, opt)->
       e.preventDefault()
       e.stopPropagation()
     
-    addListener $img_crop_area, 'mousedown', dragstart
-      
+    addListener $img_cropper, 'mousedown', dragstart
+    
+    return
+
 
   add_drag_corner_hanlders = ->
     start_x = null
@@ -189,26 +190,21 @@ baguaImageEditor = (editor, opt)->
     
     max_width = 0
     max_height = 0
-    
-    corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
-    
-    for corner in corners
-      addListener corner, 'mousedown', dragstart
-    
+
     dragstart = (e)->
-      if not e.target.hasAttribute(IMG_CORNER)
+      if not e.target.hasAttribute(CROP_CORNER)
         return
       $current_corner = e.target
       start_x = e.clientX
       start_y = e.clientY
-      area_left = parseInt($img_crop_area.style.left) or 0
-      area_top = parseInt($img_crop_area.style.top) or 0
-      area_bottom = parseInt($img_crop_area.style.bottom) or 0
-      area_right = parseInt($img_crop_area.style.right) or 0
-      
-      max_width = $current_img.clientWidth
-      max_height = $current_img.clientHeight
-      
+      area_left = parseInt($img_cropper.style.left) or 0
+      area_top = parseInt($img_cropper.style.top) or 0
+      area_bottom = parseInt($img_cropper.style.bottom) or 0
+      area_right = parseInt($img_cropper.style.right) or 0
+
+      max_width = $current_area.clientWidth
+      max_height = $current_area.clientHeight
+
       min_size = $options.crop_min_size
       
       limit_left = max_width-area_right-min_size
@@ -217,17 +213,17 @@ baguaImageEditor = (editor, opt)->
       limit_bottom = max_height-area_top-min_size
       
       addListener document, 'mousemove', dragging
-      addListener document, dragstop
+      addListener document, 'mouseup', dragstop
       e.preventDefault()
       e.stopPropagation()
     
     dragging = (e)->
-      return unless $img_crop_area
+      return unless $img_cropper
       
       move_x = e.clientX - start_x
       move_y = e.clientY - start_y
 
-      ori = $current_corner.getAttribute(IMG_CORNER)
+      ori = $current_corner.getAttribute(CROP_CORNER)
 
       top = null
       left = null
@@ -255,12 +251,12 @@ baguaImageEditor = (editor, opt)->
       else if ori == 'dui'
         left = between(area_left + move_x, 0, limit_left)
       
-      $img_crop_area.style.left = px(left) if left isnt null
-      $img_crop_area.style.top = px(top) if top isnt null
-      $img_crop_area.style.bottom = px(bottom) if bottom isnt null
-      $img_crop_area.style.right = px(right) if right isnt null
+      $img_cropper.style.left = px(left) if left isnt null
+      $img_cropper.style.top = px(top) if top isnt null
+      $img_cropper.style.bottom = px(bottom) if bottom isnt null
+      $img_cropper.style.right = px(right) if right isnt null
 
-      pos_crop_area()
+      pos_cropper()
       
       e.preventDefault()
       e.stopPropagation()
@@ -271,15 +267,21 @@ baguaImageEditor = (editor, opt)->
       document.removeEventListener 'mouseup', dragstop
       e.preventDefault()
       e.stopPropagation()
-
+    
+    corners = $img_cropper.querySelectorAll '['+CROP_CORNER+']'
+    
+    for corner in corners
+      addListener corner, 'mousedown', dragstart
+      
+    return
+    
+    
+    
   resize_handler = (e)->
-    pos_crop_area()
-    # window.clearTimeout($reisze_timer_id) if $reisze_timer_id
-    # $reisze_timer_id = window.setTimeout ->
-    #   $img_canvas.style.visibility = ''
-    #   $img_canvas_bg.style.visibility = ''
-    #   window.clearTimeout($reisze_timer_id)
-    # , 500
+    pos_image()
+    pos_area()
+    pos_cropper()
+
   
   _eventListeners = []
 
@@ -310,83 +312,133 @@ baguaImageEditor = (editor, opt)->
   
 
 # ---------------- Functions --------------  
-  set_image = (img_editor, img) ->
+  set_image = (img) ->
+    img.style.maxWidth = '100%'
+    img.style.maxHeight = '100%'
     img.style.position = 'relative'
-    img_editor.appendChild(img)
+    $img_editor.appendChild(img)
     $current_img = img
-    pos_image_area()
+    pos_image()
     return img
-    
-  set_crop = (img_editor)->
-    if not $current_img
+  
+  set_cropper = ->
+    if not $current_area or not $current_img
+      throw project_name+': Can not set copper before set area and img.'
       return
-    crop = document.createElement('DIV')
-    crop.setAttribute(IMG_CROP, now)
-    crop.style.position = 'absolute'
-    console.log $current_img.style.top
-    crop.style.top = $current_img.style.top
-    crop.style.left = $current_img.style.left
-    crop.style.right = $current_img.style.left
-    crop.style.bottom = $current_img.style.top
-    crop.style.zIndex = 99
-    img_editor.appendChild(crop)
+    cropper = document.createElement('DIV')
+    cropper.style.position = 'absolute'
+    cropper.style.top = 0
+    cropper.style.left = 0
+    cropper.style.right = 0
+    cropper.style.bottom = 0
+    cropper.style.zIndex = 99
+    $current_area.appendChild(cropper)
+    
+    crop_container = document.createElement('DIV')
+    crop_container.style.position = 'relative'
+    crop_container.style.width = '100%'
+    crop_container.style.height = '100%'
+    crop_container.style.overflow = 'hidden'
+    crop_container.style.background = 'orange' if debug
+    $current_area.appendChild(crop_container)
 
+    cropped_img = $current_img.cloneNode()
+    cropped_img.style.maxWidth = null
+    cropped_img.style.maxHeight = null
+    cropped_img.style.position = 'absolute'
+    cropped_img.style.top = 0
+    cropped_img.style.left = 0
+    crop_container.appendChild(cropped_img)
+    
     index = 0
     for ori,dim of ORIENTATION
       corner = document.createElement('DIV')
-      corner.setAttribute(IMG_CORNER, ori)
       corner.style.position = 'absolute'
       corner.style.width = px($options.corner_size)
       corner.style.height = px($options.corner_size)
       corner.style.cursor = 'pointer'
       corner.style.zIndex = 99-index
-      corner.style.backgroundColor = 'blue'
-      crop.appendChild(corner)
+      corner.style.backgroundColor = 'blue' if debug
+      corner.setAttribute(CROP_CORNER, ori)
+      cropper.appendChild(corner)
       index++
-
-    $img_crop_area = crop
-    pos_crop_area()
+    
+    
+    $img_cropper = cropper
+    $cropped_img = cropped_img
+    $crop_container = crop_container
+    pos_cropper()
     add_drag_corner_hanlders()
-    add_crop_area_hanlder()
+    add_cropper_hanlders()
 
-    return crop
+    return cropper
+  
+  set_area = ->
+    if not $current_img
+      throw project_name+': Can not set area before set current image.'
+      return
+    area = document.createElement('DIV')
+    area.style.position = 'absolute'
+    area.style.backgroundColor = 'rgba(0,0,0,0.5)'
+    $img_editor.appendChild(area)
+    $current_area = area
+    pos_area()
+    return area
 
-  pos_image_area = ->
+  pos_area = ->
+    if not $current_img or not $current_area
+      return
+    $current_area.style.top = $current_img.style.top
+    $current_area.style.left = $current_img.style.left
+    $current_area.style.right = $current_img.style.left
+    $current_area.style.bottom = $current_img.style.top
+    $current_area.style.width = px($current_img.width)
+    $current_area.style.height = px($current_img.height)
+
+    return
+
+
+  pos_image = ->
     if not $current_img
       return
     editor_w = $img_editor.clientWidth
     editor_h = $img_editor.clientHeight
     img_w = $current_img.width
     img_h = $current_img.height
-    if editor_w > editor_h
-      $current_img.width = editor_w
-      $current_img.height = int(img_h * editor_w / img_w)
-    else
-      $current_img.width = int(img_w * editor_h / img_h)
-      $current_img.height = editor_h
-
+    
     $current_img.style.top = px((editor_h - $current_img.height) / 2)
     $current_img.style.left = px((editor_w - $current_img.width) / 2)
+    
+    return
 
     
-  pos_crop_area = ->
-    if not $current_img
+  pos_cropper = ->
+    if not $current_area
       return
     corner_offset = int($options.corner_size / 2)
-    corners = $img_crop_area.querySelectorAll '['+IMG_CORNER+']'
+    corners = $img_cropper.querySelectorAll '['+CROP_CORNER+']'
 
-    left = parseInt($img_crop_area.style.left) or 0
-    right = parseInt($img_crop_area.style.right) or 0
-    top = parseInt($img_crop_area.style.top) or 0
-    bottom = parseInt($img_crop_area.style.bottom) or 0
+    left = parseInt($img_cropper.style.left) or 0
+    right = parseInt($img_cropper.style.right) or 0
+    top = parseInt($img_cropper.style.top) or 0
+    bottom = parseInt($img_cropper.style.bottom) or 0
 
-    width = $current_img.width-left-right
-    height = $current_img.height-top-bottom
-    $img_crop_area.style.width = px(width)
-    $img_crop_area.style.height = px(height)
+    width = $current_area.clientWidth-left-right
+    height = $current_area.clientHeight-top-bottom
+    $img_cropper.style.width = px(width)
+    $img_cropper.style.height = px(height)
+    $crop_container.style.width = px(width)
+    $crop_container.style.height = px(height)
+    $crop_container.style.top = px(top)
+    $crop_container.style.left = px(left)
+    
+    $cropped_img.style.top = px(-top)
+    $cropped_img.style.left = px(-left)
+    $cropped_img.width = $current_img.width
+    $cropped_img.height = $current_img.height
     
     for corner in corners
-      ori = corner.getAttribute(IMG_CORNER)
+      ori = corner.getAttribute(CROP_CORNER)
       dim = ORIENTATION[ori]
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
@@ -401,7 +453,7 @@ baguaImageEditor = (editor, opt)->
     $current_img = null
     $current_corner = null
     $img_editor = null
-    $img_crop_area = null
+    $img_cropper = null
     
   load = (img_src)->
     if not $img_editor
@@ -415,12 +467,13 @@ baguaImageEditor = (editor, opt)->
     img.onload = (e)->
       if not $img_editor
         return
-      set_image($img_editor, img)
-      set_crop($img_editor)
+      set_image(img)
+      set_area()
+      set_cropper()
   
   
   # ---------------- Init --------------
-  init = (editor, opt)->
+  init = (editor, opt, is_debug)->
     if typeof editor is 'string'
       $img_editor = document.querySelector('[name='+ editor + ']')
     else if isHTMLElement(editor)
@@ -433,16 +486,17 @@ baguaImageEditor = (editor, opt)->
       throw project_name+': Init image editor failed!!'
       return
     
-    if typeof opt is "object"
+    if typeof opt is "object" and opt
       for k,v of opt
         $options[k] = v
-
-    $img_editor.setAttribute(IMG_EDITOR_ID, now)
-    $img_editor.dataset['inited'] = true
+    
+    debug = is_debug
+    $img_editor.setAttribute(EDITOR_ID, now)
+    $img_editor.style.background = 'yellow' if debug
     addListener window, 'resize', resize_handler
   
   if editor
-    init(editor, opt)
+    init(editor, opt, is_debug)
   
   # ---------------- Output --------------
 
