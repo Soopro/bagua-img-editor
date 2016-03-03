@@ -61,6 +61,15 @@ getStyleSheet = (element, pseudo)->
   if element.currentStyle
     return element.currentStyle
 
+get_file_ext = (filename)->
+  try
+    pair = filename.split('.')
+    if pair.length > 1
+      return pair.pop()
+    return ''
+  catch
+    return ''
+    
 dataURLToBlob = (dataURL) ->
   BASE64_MARKER = ';base64,'
   if dataURL.indexOf(BASE64_MARKER) == -1
@@ -90,9 +99,17 @@ baguaImageEditor = (editor, opt, is_debug)->
   now = Date.now()
   debug = false
   
+  mimetypes =
+    'png': ['image/png']
+    'image/jpeg': ['jpg', 'jpe', 'jpeg']
+    'gif': ['image/gif']
+    'image/bmp': ['bm', 'bmp']
+    
   $options = 
     corner_size: 16
     crop_min_size: 32
+    encoder_options: 1
+    media_type: 'image/png'
   
   $reisze_timer_id = null
   
@@ -106,7 +123,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   
   $img_editor = null
   $img_cropper = null
-  
+  $img_dataurl = null
   
   EDITOR_ID = 'bagua-editor-id'
   CROP_CORNER = 'crop-corner'
@@ -130,7 +147,9 @@ baguaImageEditor = (editor, opt, is_debug)->
       pos: [0, 1]
     'dui': 
       pos: [0, 0.5]
- 
+  
+  
+  loadedHook = null
   
 # ---------------- Handlers --------------
 
@@ -331,16 +350,16 @@ baguaImageEditor = (editor, opt, is_debug)->
 
 # ---------------- Functions --------------  
   set_image = (img) ->
-    $source_img = img.cloneNode()
-
-    img.style.maxWidth = '100%'
-    img.style.maxHeight = '100%'
-    img.style.position = 'relative'
-    img.style.pointerEvents = 'none'
-    $img_editor.appendChild(img)
-    $current_img = img
+    $source_img = img
+    curren_img = img.cloneNode()
+    curren_img.style.maxWidth = '100%'
+    curren_img.style.maxHeight = '100%'
+    curren_img.style.position = 'relative'
+    curren_img.style.pointerEvents = 'none'
+    $img_editor.appendChild(curren_img)
+    $current_img = curren_img
     pos_image()
-    return img
+    return curren_img
   
   set_cropper = ->
     if not $current_area or not $current_img
@@ -489,7 +508,10 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
 
-  capture = ->
+  capture = (encoder, mimetype)->
+    if not $current_img
+      return
+
     precent = $current_img.width / $source_img.width
     
     width = int((parseInt($crop_container.style.width) or 0) / precent)
@@ -503,9 +525,35 @@ baguaImageEditor = (editor, opt, is_debug)->
     
     canvas_context = canvas.getContext('2d')
     canvas_context.drawImage($source_img, left, top, width, height, 
-                                          0, 0, width, height)
-    
-    return canvas.toDataURL()
+                                             0,   0, width, height)
+
+    $img_dataurl = canvas.toDataURL(mimetype or $options.mimetype,
+                                    encoder or $options.encoder_options)
+    return $img_dataurl
+  
+  dataurl = ->
+    return $img_dataurl
+  
+  blob = (media, dataurl)->
+    if not $img_dataurl
+      return
+    if not media or typeof media != 'object'
+      media =
+        name: Date.now().toString()
+        lastModified: ''
+
+    dataurl = $img_dataurl if not dataurl
+    new_media = dataURLToBlob dataurl
+    new_media.name = media.name
+    new_media.lastModified = media.lastModified
+    new_media.lastModifiedDate = new Date()
+    return new_media
+
+  capture_blob = (media, encoder, mimetype)->
+    if not $current_img
+      return
+    dataurl = capture(encoder, mimetype)
+    return blob(media, dataurl)
 
   destroy = ->
     if not $img_editor
@@ -521,8 +569,19 @@ baguaImageEditor = (editor, opt, is_debug)->
     $cropped_img = null
     $img_editor = null
     $img_cropper = null
-    
-  load = (img_src)->
+    $img_dataurl = null
+    loadedHook = null
+  
+  get_mimetype = (src)->
+    ext = get_file_ext(src)
+    if ext
+      for k,v of mimetypes
+        if ext in v
+          return k
+    return null
+
+  
+  load = (img_src, mimetype)->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
 
@@ -534,10 +593,24 @@ baguaImageEditor = (editor, opt, is_debug)->
     img.onload = (e)->
       if not $img_editor
         return
+
+      if mimetype
+        $options.mimetype = mimetype
+      else
+        $options.mimetype = get_mimetype(img.src)
+
       set_image(img)
       set_area()
       set_cropper()
+      
+      if typeof loadedHook == 'function'
+        loadedHook()
   
+  
+  # ---------------- Hooks --------------
+  set_loaded_hook = (func)->
+    if typeof func == 'function'
+      loadedHook = func
   
   # ---------------- Init --------------
   init = (editor, opt, is_debug)->
@@ -568,7 +641,12 @@ baguaImageEditor = (editor, opt, is_debug)->
     init: init
     load: load
     capture: capture
+    capture_blob: capture_blob
+    dataurl: dataurl
+    blob: blob
     destroy: destroy
+    hooks:
+      loaded: set_loaded_hook
   
   return methods
 
@@ -593,15 +671,19 @@ angular.module 'baguaImageEditor', []
     require: '?ngModel',
     scope:
       imgSrc: '@'
+      imgType: '@'
       options: '='
+
     link: (scope, element, attrs, ngModel) ->
-      if not scope.imgSrc or not ngModel
+      if not ngModel
         return
       debug = attrs.baguaImageEditor
       img_editor = new baguaImageEditor(element[0], scope.options, debug)
-      img_editor.load scope.imgSrc
+      if scope.imgSrc
+        img_editor.load scope.imgSrc, scope.imgType
+      img_editor.hooks.loaded ->
+        $rootScope.$emit 'bagua.loaded', img_editor
       
-      $rootScope.$emit 'bagua.loaded', img_editor
       
       # destroy
       scope.$on '$destroy', ->
