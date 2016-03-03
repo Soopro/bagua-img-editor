@@ -585,7 +585,7 @@ baguaImageEditor = (editor, opt, is_debug)->
 
     if typeof img_src isnt 'string'
       throw project_name+': Invalid image!'
-    
+
     img = new Image()
     img.src = img_src
     img.onload = (e)->

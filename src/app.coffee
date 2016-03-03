@@ -17,7 +17,7 @@ angular.module 'App', [
 
     $scope.has_editor = ->
       Boolean(current_img_editor)
-    
+
     $scope.capture = ->
       if not current_img_editor
         return
