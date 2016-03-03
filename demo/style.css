@@ -1,0 +1,10 @@
+/* ---------------------------------------
+/* Bagua Image Editor styles
+/* --------------------------------------- */
+*[bagua-image-editor] [cropper] {
+  outline: 2px dashed #7eae64;
+}
+*[bagua-image-editor] [cropper] [crop-corner] {
+  border-radius: 50%;
+  background: #7eae64;
+}
