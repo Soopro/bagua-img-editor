@@ -5,22 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sup Image Editor</title>
   <link rel="stylesheet" href="style.css">
+  <script src="angular.min.js"></script>
+  <script src="bagua-img-editor.js"></script>
+  <script src="app.js"></script>
 </head>
-<body style="height:100%; background:#eee;" ng-controller="appCtrl">
+<body style="height:100%; background:#eee;" ng-cloak ng-controller="appCtrl">
   <h1 style="text-align:center">Sup Image Editor</h1>
-  <div bagua-image-editor img-src="{{'sample.jpg'}}" ng-model="test"
+  <div bagua-image-editor img-src="{{'sample_long.jpg'}}" ng-model="test"
        style="width:50%;height:60%;position:relative;margin:0 auto;">
   </div>
   <div style="text-align:center; padding: 15px;">
     <button ng-click="capture()">Capture</button>
   </div>
   <div style="text-align:center; padding: 15px;">
+    <p>Aspect width: {{img_aspect.width}}</p>
+    <p>Aspect height: {{img_aspect.height}}</p>
+    <label>Aspect Ratio<label>
+    <input value="" ng-model="img_percent">
+    <button ng-click="scale_capture()">Capture with this Resolution</button>
+  </div>
+  <div style="text-align:center; padding: 15px;">
     <div class="capture-container">
       <img ng-src="{{img_src}}" style="border:1px solid #111;">
     </div>
   </div>
-  <script src="angular.min.js"></script>
-  <script src="bagua-img-editor.js"></script>
-  <script src="app.js"></script>
 </body>
 </html>

@@ -108,10 +108,10 @@ baguaImageEditor = (editor, opt, is_debug)->
   $options = 
     corner_size: 12
     crop_min_size: 32
-    encoder_options: 1
-    mimetype: 'image/png'
   
   $reisze_timer_id = null
+  
+  $aspect_ratio = 1
   
   $source_img = null
   $current_img = null
@@ -474,12 +474,12 @@ baguaImageEditor = (editor, opt, is_debug)->
     bottom = parseInt($img_cropper.style.bottom) or 0
     
     if resizing and last_area_width and last_area_height
-      precent_w = area_width / last_area_width
-      precent_h = area_height / last_area_height
-      left = between(int(left*precent_w), 0, area_width-min_size)
-      right = between(int(right*precent_w), 0, area_width-min_size)
-      top = between(int(top*precent_h), 0, area_height-min_size)
-      bottom = between(int(bottom*precent_h), 0, area_height-min_size)
+      percent_w = area_width / last_area_width
+      percent_h = area_height / last_area_height
+      left = between(int(left*percent_w), 0, area_width-min_size)
+      right = between(int(right*percent_w), 0, area_width-min_size)
+      top = between(int(top*percent_h), 0, area_height-min_size)
+      bottom = between(int(bottom*percent_h), 0, area_height-min_size)
     
     width = area_width-left-right
     height = area_height-top-bottom
@@ -510,42 +510,57 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
   
-  scale = (precent)->
-    if not $source_img or typeof precent isnt 'number'
-      return
-    width = $source_img.width
-    height = $source_img.height
-    $source_img.width = int(width*precent)
-    $source_img.height = int(height*precent)
-    set_image($source_img)
-    set_area()
-    set_cropper()
+  aspect = ->
     return {
-      width: $source_img.width
-      height: $source_img.height
+      width: int($source_img.width * $aspect_ratio)
+      height: int($source_img.height * $aspect_ratio)
+      aspect_ratio: $aspect_ratio
     }
   
-  capture = (encoder, mimetype)->
+  scale = (aspect_ratio)->
+    if not $source_img
+      return
+    aspect_ratio = Number(aspect_ratio)
+    if aspect_ratio and aspect_ratio <= 1
+      $aspect_ratio = aspect_ratio
+
+    return aspect()
+  
+  mimetype = ->
+    return get_mimetype($source_img.src)
+  
+  capture = (img_mimetype, encoder)->
     if not $current_img
       return
 
-    precent = $current_img.width / $source_img.width
+    if not img_mimetype
+      img_mimetype = get_mimetype($source_img.src)
     
-    width = int((parseInt($crop_container.style.width) or 0) / precent)
-    height = int((parseInt($crop_container.style.height) or 0) / precent)
-    top = int((parseInt($crop_container.style.top) or 0) / precent)
-    left = int((parseInt($crop_container.style.left) or 0) / precent)
+    src_width = $source_img.width * $aspect_ratio
+    src_height = $source_img.height * $aspect_ratio
+    
+    percent = src_width / $current_img.width
+    
+    width = int((parseInt($crop_container.style.width) or 0) * percent)
+    height = int((parseInt($crop_container.style.height) or 0) * percent)
+    top = int((parseInt($crop_container.style.top) or 0) * percent)
+    left = int((parseInt($crop_container.style.left) or 0) * percent)
+    
+    
+    org_canvas = document.createElement('canvas')
+    org_canvas.width = src_width
+    org_canvas.height = src_height
+    org_context = org_canvas.getContext('2d')
+    org_context.drawImage($source_img, 0, 0, src_width, src_height)
 
     canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
-    
     canvas_context = canvas.getContext('2d')
-    canvas_context.drawImage($source_img, left, top, width, height, 
-                                             0,   0, width, height)
+    canvas_context.drawImage(org_canvas, left, top, width, height, 
+                                            0,   0, width, height)
 
-    $img_dataurl = canvas.toDataURL(mimetype or $options.mimetype,
-                                    encoder or $options.encoder_options)
+    $img_dataurl = canvas.toDataURL(img_mimetype, encoder)
     return $img_dataurl
   
   
@@ -564,10 +579,12 @@ baguaImageEditor = (editor, opt, is_debug)->
     new_media.lastModifiedDate = new Date()
     return new_media
 
-  capture_blob = (media, encoder, mimetype)->
+  capture_blob = (media, encoder)->
     if not $current_img
       return
-    dataurl = capture(encoder, mimetype)
+    if not media or typeof media != 'object'
+      media = {}
+    dataurl = capture(media.type, encoder)
     return blob(media, dataurl)
 
   destroy = ->
@@ -586,7 +603,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     $img_cropper = null
     $img_dataurl = null
     loadedHook = null
-  
+
   get_mimetype = (src)->
     ext = get_file_ext(src)
     if ext
@@ -595,12 +612,12 @@ baguaImageEditor = (editor, opt, is_debug)->
           return k
     return null
 
-  
-  load = (img_src, mimetype)->
+
+  load = (img_src)->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
 
-    if typeof img_src isnt 'string'
+    if typeof img_src isnt 'string' or not get_mimetype(img_src)
       throw project_name+': Invalid image!'
 
     img = new Image()
@@ -608,12 +625,6 @@ baguaImageEditor = (editor, opt, is_debug)->
     img.onload = (e)->
       if not $img_editor
         return
-
-      if mimetype
-        $options.mimetype = mimetype
-      else
-        $options.mimetype = get_mimetype(img.src)
-
       set_image(img)
       set_area()
       set_cropper()
@@ -655,6 +666,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   methods = 
     init: init
     load: load
+    aspect: aspect
     scale: scale
     capture: capture
     capture_blob: capture_blob
