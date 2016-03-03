@@ -14,7 +14,7 @@ angular.module 'App', [
   ) ->
     current_img_editor = null
     $scope.img_src = null
-    $scope.img_percent = 0.5
+    $scope.img_percent = 1
     $scope.img_aspect = null
     $scope.img_url = 'sample.png'
     
@@ -36,11 +36,12 @@ angular.module 'App', [
     $scope.scale_capture = ->
       $scope.scale()
       $scope.capture()
-    
+
     $scope.scale = ->
       if not current_img_editor
         return
       $scope.img_aspect = current_img_editor.scale($scope.img_percent)
+      $scope.img_percent = $scope.img_aspect.ratio
       
     $scope.capture = ->
       if not current_img_editor

@@ -11,91 +11,11 @@
 # <div sup-image-editor></div>
 # ------------------------------->
 
-# ---------------------------------------
-# Utils
-# ---------------------------------------
-
-isHTMLElement = (o) ->
-  if not o
-    return false
-  is_obj = o and typeof o == 'object' and o != null
-  is_obj_type = o.nodeType is 1 and typeof o.nodeName is 'string'
-  result =  is_obj and is_obj_type
-  return result
-
-int = (number, type)->
-  if type == 'ceil' or type == -1
-    return Math.ceil(number)
-  else if type == 'floor' or type == 1
-    return Math.floor(number)
-  try
-    return Math.round(number)
-  catch
-    parseInt(number)
-
-px = (number)->
-  if typeof number is 'number'
-    return int(number)+'px'
-  else
-    return number
-
-max = (number1, number2)->
-  if number1 > number2
-    return number1
-  else
-    return number2
-
-min = (number1, number2)->
-  if number1 < number2
-    return number1
-  else
-    return number2
-
-between = (number, min_number, max_number)->
-  return min(max(number, min_number), max_number)
-
-
-getStyleSheet = (element, pseudo)->
-  if window.getComputedStyle
-    return window.getComputedStyle(element, pseudo)
-  if element.currentStyle
-    return element.currentStyle
-
-get_file_ext = (filename)->
-  try
-    pair = filename.split('.')
-    if pair.length > 1
-      return pair.pop()
-    return ''
-  catch
-    return ''
-    
-dataURLToBlob = (dataURL) ->
-  BASE64_MARKER = ';base64,'
-  if dataURL.indexOf(BASE64_MARKER) == -1
-    parts = dataURL.split(',')
-    contentType = parts[0].split(':')[1]
-    raw = parts[1]
-    return new Blob([ raw ], type: contentType)
-  parts = dataURL.split(BASE64_MARKER)
-  contentType = parts[0].split(':')[1]
-  raw = window.atob(parts[1])
-  rawLength = raw.length
-  uInt8Array = new Uint8Array(rawLength)
-  i = 0
-  while i < rawLength
-    uInt8Array[i] = raw.charCodeAt(i)
-    ++i
-  new Blob([ uInt8Array ], type: contentType)
-
-# ---------------------------------------
-# Module
-# ---------------------------------------
 
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.2.0'
+  ver = '0.2.1'
   now = Date.now()
   debug = false
   
@@ -111,7 +31,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   
   $reisze_timer_id = null
   
-  $aspect_ratio = 1
+  $aspect_ratio_num = 1
   
   $source_img = null
   $current_img = null
@@ -510,34 +430,63 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
   
+  
+  _ratio = (a, b) ->
+    if b == 0 then a else _ratio(b, a % b)
+  
+  _ten = (a, b) ->
+    a = int(a)
+    b = int(b)
+    if a < 100 and b < 100
+      return [a, b]
+    else
+      a = a / 10
+      b = b / 10
+      return _ten(a, b)
+  
+  _get_mimetype = (src)->
+    ext = get_file_ext(src)
+    if ext
+      for k,v of mimetypes
+        if ext in v
+          return k
+    return null
+    
   aspect = ->
+    r = _ratio($source_img.width, $source_img.height)
+    rw = int($source_img.width / r)
+    rh = int($source_img.height / r)
     return {
-      width: int($source_img.width * $aspect_ratio)
-      height: int($source_img.height * $aspect_ratio)
-      aspect_ratio: $aspect_ratio
+      width: int($source_img.width * $aspect_ratio_num)
+      height: int($source_img.height * $aspect_ratio_num)
+      ratio: $aspect_ratio_num
+      rw: rw
+      rh: rh
+      w: _ten(rw, rh)[0]
+      h: _ten(rw, rh)[1]
     }
   
-  scale = (aspect_ratio)->
+  scale = (aspect_ratio_num)->
     if not $source_img
       return
-    aspect_ratio = Number(aspect_ratio)
-    if aspect_ratio and aspect_ratio <= 1
-      $aspect_ratio = aspect_ratio
+    aspect_ratio_num = Number(aspect_ratio_num)
+    if aspect_ratio_num and aspect_ratio_num <= 1
+      $aspect_ratio_num = aspect_ratio_num
 
     return aspect()
   
   mimetype = ->
-    return get_mimetype($source_img.src)
+    return _get_mimetype($source_img.src)
   
   capture = (img_mimetype, encoder)->
     if not $current_img
       return
 
     if not img_mimetype
-      img_mimetype = get_mimetype($source_img.src)
+      img_mimetype = _get_mimetype($source_img.src)
     
-    src_width = $source_img.width * $aspect_ratio
-    src_height = $source_img.height * $aspect_ratio
+    src_width = $source_img.width * $aspect_ratio_num
+    src_height = $source_img.height * $aspect_ratio_num
     
     percent = src_width / $current_img.width
     
@@ -594,14 +543,6 @@ baguaImageEditor = (editor, opt, is_debug)->
     loadedHook = null
     $img_editor = null
 
-  get_mimetype = (src)->
-    ext = get_file_ext(src)
-    if ext
-      for k,v of mimetypes
-        if ext in v
-          return k
-    return null
-  
   unload = ->
     if $img_editor and $current_img
       $img_editor.innerHTML = ''
@@ -620,7 +561,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
     
-    if typeof img_src isnt 'string' or not get_mimetype(img_src)
+    if typeof img_src isnt 'string' or not _get_mimetype(img_src)
       throw project_name+': Invalid image!'
     
     unload()
@@ -671,7 +612,9 @@ baguaImageEditor = (editor, opt, is_debug)->
   methods = 
     init: init
     load: load
+    unload: unload
     aspect: aspect
+    mimetype: mimetype
     scale: scale
     capture: capture
     capture_blob: capture_blob
@@ -681,6 +624,86 @@ baguaImageEditor = (editor, opt, is_debug)->
       loaded: set_loaded_hook
   
   return methods
+
+
+# ---------------------------------------
+# Utils
+# ---------------------------------------
+
+isHTMLElement = (o) ->
+  if not o
+    return false
+  is_obj = o and typeof o == 'object' and o != null
+  is_obj_type = o.nodeType is 1 and typeof o.nodeName is 'string'
+  result =  is_obj and is_obj_type
+  return result
+
+int = (number, type)->
+  if type == 'ceil' or type == -1
+    return Math.ceil(number)
+  else if type == 'floor' or type == 1
+    return Math.floor(number)
+  try
+    return Math.round(number)
+  catch
+    parseInt(number) or 0
+
+px = (number)->
+  if typeof number is 'number'
+    return int(number)+'px'
+  else
+    return number
+
+max = (number1, number2)->
+  if number1 > number2
+    return number1
+  else
+    return number2
+
+min = (number1, number2)->
+  if number1 < number2
+    return number1
+  else
+    return number2
+
+between = (number, min_number, max_number)->
+  return min(max(number, min_number), max_number)
+
+
+getStyleSheet = (element, pseudo)->
+  if window.getComputedStyle
+    return window.getComputedStyle(element, pseudo)
+  if element.currentStyle
+    return element.currentStyle
+
+get_file_ext = (filename)->
+  try
+    pair = filename.split('.')
+    if pair.length > 1
+      return pair.pop()
+    return ''
+  catch
+    return ''
+    
+dataURLToBlob = (dataURL) ->
+  BASE64_MARKER = ';base64,'
+  if dataURL.indexOf(BASE64_MARKER) == -1
+    parts = dataURL.split(',')
+    contentType = parts[0].split(':')[1]
+    raw = parts[1]
+    return new Blob([ raw ], type: contentType)
+  parts = dataURL.split(BASE64_MARKER)
+  contentType = parts[0].split(':')[1]
+  raw = window.atob(parts[1])
+  rawLength = raw.length
+  uInt8Array = new Uint8Array(rawLength)
+  i = 0
+  while i < rawLength
+    uInt8Array[i] = raw.charCodeAt(i)
+    ++i
+  new Blob([ uInt8Array ], type: contentType)
+
+
 
 if not window
   console.error project_name+': For browsers only!!'

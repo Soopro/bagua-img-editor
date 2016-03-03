@@ -3,111 +3,10 @@
   var baguaImageEditor, between, dataURLToBlob, getStyleSheet, get_file_ext, int, isHTMLElement, max, min, px,
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-  isHTMLElement = function(o) {
-    var is_obj, is_obj_type, result;
-    if (!o) {
-      return false;
-    }
-    is_obj = o && typeof o === 'object' && o !== null;
-    is_obj_type = o.nodeType === 1 && typeof o.nodeName === 'string';
-    result = is_obj && is_obj_type;
-    return result;
-  };
-
-  int = function(number, type) {
-    var error;
-    if (type === 'ceil' || type === -1) {
-      return Math.ceil(number);
-    } else if (type === 'floor' || type === 1) {
-      return Math.floor(number);
-    }
-    try {
-      return Math.round(number);
-    } catch (error) {
-      return parseInt(number);
-    }
-  };
-
-  px = function(number) {
-    if (typeof number === 'number') {
-      return int(number) + 'px';
-    } else {
-      return number;
-    }
-  };
-
-  max = function(number1, number2) {
-    if (number1 > number2) {
-      return number1;
-    } else {
-      return number2;
-    }
-  };
-
-  min = function(number1, number2) {
-    if (number1 < number2) {
-      return number1;
-    } else {
-      return number2;
-    }
-  };
-
-  between = function(number, min_number, max_number) {
-    return min(max(number, min_number), max_number);
-  };
-
-  getStyleSheet = function(element, pseudo) {
-    if (window.getComputedStyle) {
-      return window.getComputedStyle(element, pseudo);
-    }
-    if (element.currentStyle) {
-      return element.currentStyle;
-    }
-  };
-
-  get_file_ext = function(filename) {
-    var error, pair;
-    try {
-      pair = filename.split('.');
-      if (pair.length > 1) {
-        return pair.pop();
-      }
-      return '';
-    } catch (error) {
-      return '';
-    }
-  };
-
-  dataURLToBlob = function(dataURL) {
-    var BASE64_MARKER, contentType, i, parts, raw, rawLength, uInt8Array;
-    BASE64_MARKER = ';base64,';
-    if (dataURL.indexOf(BASE64_MARKER) === -1) {
-      parts = dataURL.split(',');
-      contentType = parts[0].split(':')[1];
-      raw = parts[1];
-      return new Blob([raw], {
-        type: contentType
-      });
-    }
-    parts = dataURL.split(BASE64_MARKER);
-    contentType = parts[0].split(':')[1];
-    raw = window.atob(parts[1]);
-    rawLength = raw.length;
-    uInt8Array = new Uint8Array(rawLength);
-    i = 0;
-    while (i < rawLength) {
-      uInt8Array[i] = raw.charCodeAt(i);
-      ++i;
-    }
-    return new Blob([uInt8Array], {
-      type: contentType
-    });
-  };
-
   baguaImageEditor = function(editor, opt, is_debug) {
-    var $aspect_ratio, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, addListener, add_cropper_hanlders, add_drag_corner_hanlders, aspect, blob, capture, capture_blob, debug, destroy, get_mimetype, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
+    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, aspect, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.2.0';
+    ver = '0.2.1';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -121,7 +20,7 @@
       crop_min_size: 32
     };
     $reisze_timer_id = null;
-    $aspect_ratio = 1;
+    $aspect_ratio_num = 1;
     $source_img = null;
     $current_img = null;
     $current_corner = null;
@@ -503,25 +402,64 @@
         corner.style.top = px(int(height * dim.pos[1]) - corner_offset);
       }
     };
+    _ratio = function(a, b) {
+      if (b === 0) {
+        return a;
+      } else {
+        return _ratio(b, a % b);
+      }
+    };
+    _ten = function(a, b) {
+      a = int(a);
+      b = int(b);
+      if (a < 100 && b < 100) {
+        return [a, b];
+      } else {
+        a = a / 10;
+        b = b / 10;
+        return _ten(a, b);
+      }
+    };
+    _get_mimetype = function(src) {
+      var ext, k, v;
+      ext = get_file_ext(src);
+      if (ext) {
+        for (k in mimetypes) {
+          v = mimetypes[k];
+          if (indexOf.call(v, ext) >= 0) {
+            return k;
+          }
+        }
+      }
+      return null;
+    };
     aspect = function() {
+      var r, rh, rw;
+      r = _ratio($source_img.width, $source_img.height);
+      rw = int($source_img.width / r);
+      rh = int($source_img.height / r);
       return {
-        width: int($source_img.width * $aspect_ratio),
-        height: int($source_img.height * $aspect_ratio),
-        aspect_ratio: $aspect_ratio
+        width: int($source_img.width * $aspect_ratio_num),
+        height: int($source_img.height * $aspect_ratio_num),
+        ratio: $aspect_ratio_num,
+        rw: rw,
+        rh: rh,
+        w: _ten(rw, rh)[0],
+        h: _ten(rw, rh)[1]
       };
     };
-    scale = function(aspect_ratio) {
+    scale = function(aspect_ratio_num) {
       if (!$source_img) {
         return;
       }
-      aspect_ratio = Number(aspect_ratio);
-      if (aspect_ratio && aspect_ratio <= 1) {
-        $aspect_ratio = aspect_ratio;
+      aspect_ratio_num = Number(aspect_ratio_num);
+      if (aspect_ratio_num && aspect_ratio_num <= 1) {
+        $aspect_ratio_num = aspect_ratio_num;
       }
       return aspect();
     };
     mimetype = function() {
-      return get_mimetype($source_img.src);
+      return _get_mimetype($source_img.src);
     };
     capture = function(img_mimetype, encoder) {
       var canvas, canvas_context, height, left, org_canvas, org_context, percent, src_height, src_width, top, width;
@@ -529,10 +467,10 @@
         return;
       }
       if (!img_mimetype) {
-        img_mimetype = get_mimetype($source_img.src);
+        img_mimetype = _get_mimetype($source_img.src);
       }
-      src_width = $source_img.width * $aspect_ratio;
-      src_height = $source_img.height * $aspect_ratio;
+      src_width = $source_img.width * $aspect_ratio_num;
+      src_height = $source_img.height * $aspect_ratio_num;
       percent = src_width / $current_img.width;
       width = int((parseInt($crop_container.style.width) || 0) * percent);
       height = int((parseInt($crop_container.style.height) || 0) * percent);
@@ -590,19 +528,6 @@
       loadedHook = null;
       return $img_editor = null;
     };
-    get_mimetype = function(src) {
-      var ext, k, v;
-      ext = get_file_ext(src);
-      if (ext) {
-        for (k in mimetypes) {
-          v = mimetypes[k];
-          if (indexOf.call(v, ext) >= 0) {
-            return k;
-          }
-        }
-      }
-      return null;
-    };
     unload = function() {
       if ($img_editor && $current_img) {
         $img_editor.innerHTML = '';
@@ -623,7 +548,7 @@
       if (!$img_editor) {
         throw project_name + ': Image Editor not inited!';
       }
-      if (typeof img_src !== 'string' || !get_mimetype(img_src)) {
+      if (typeof img_src !== 'string' || !_get_mimetype(img_src)) {
         throw project_name + ': Invalid image!';
       }
       unload();
@@ -676,7 +601,9 @@
     methods = {
       init: init,
       load: load,
+      unload: unload,
       aspect: aspect,
+      mimetype: mimetype,
       scale: scale,
       capture: capture,
       capture_blob: capture_blob,
@@ -687,6 +614,107 @@
       }
     };
     return methods;
+  };
+
+  isHTMLElement = function(o) {
+    var is_obj, is_obj_type, result;
+    if (!o) {
+      return false;
+    }
+    is_obj = o && typeof o === 'object' && o !== null;
+    is_obj_type = o.nodeType === 1 && typeof o.nodeName === 'string';
+    result = is_obj && is_obj_type;
+    return result;
+  };
+
+  int = function(number, type) {
+    var error;
+    if (type === 'ceil' || type === -1) {
+      return Math.ceil(number);
+    } else if (type === 'floor' || type === 1) {
+      return Math.floor(number);
+    }
+    try {
+      return Math.round(number);
+    } catch (error) {
+      return parseInt(number) || 0;
+    }
+  };
+
+  px = function(number) {
+    if (typeof number === 'number') {
+      return int(number) + 'px';
+    } else {
+      return number;
+    }
+  };
+
+  max = function(number1, number2) {
+    if (number1 > number2) {
+      return number1;
+    } else {
+      return number2;
+    }
+  };
+
+  min = function(number1, number2) {
+    if (number1 < number2) {
+      return number1;
+    } else {
+      return number2;
+    }
+  };
+
+  between = function(number, min_number, max_number) {
+    return min(max(number, min_number), max_number);
+  };
+
+  getStyleSheet = function(element, pseudo) {
+    if (window.getComputedStyle) {
+      return window.getComputedStyle(element, pseudo);
+    }
+    if (element.currentStyle) {
+      return element.currentStyle;
+    }
+  };
+
+  get_file_ext = function(filename) {
+    var error, pair;
+    try {
+      pair = filename.split('.');
+      if (pair.length > 1) {
+        return pair.pop();
+      }
+      return '';
+    } catch (error) {
+      return '';
+    }
+  };
+
+  dataURLToBlob = function(dataURL) {
+    var BASE64_MARKER, contentType, i, parts, raw, rawLength, uInt8Array;
+    BASE64_MARKER = ';base64,';
+    if (dataURL.indexOf(BASE64_MARKER) === -1) {
+      parts = dataURL.split(',');
+      contentType = parts[0].split(':')[1];
+      raw = parts[1];
+      return new Blob([raw], {
+        type: contentType
+      });
+    }
+    parts = dataURL.split(BASE64_MARKER);
+    contentType = parts[0].split(':')[1];
+    raw = window.atob(parts[1]);
+    rawLength = raw.length;
+    uInt8Array = new Uint8Array(rawLength);
+    i = 0;
+    while (i < rawLength) {
+      uInt8Array[i] = raw.charCodeAt(i);
+      ++i;
+    }
+    return new Blob([uInt8Array], {
+      type: contentType
+    });
   };
 
   if (!window) {

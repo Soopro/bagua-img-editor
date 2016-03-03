@@ -5,7 +5,7 @@
       var clean_bagua, current_img_editor;
       current_img_editor = null;
       $scope.img_src = null;
-      $scope.img_percent = 0.5;
+      $scope.img_percent = 1;
       $scope.img_aspect = null;
       $scope.img_url = 'sample.png';
       $scope["switch"] = function() {
@@ -27,7 +27,8 @@
         if (!current_img_editor) {
           return;
         }
-        return $scope.img_aspect = current_img_editor.scale($scope.img_percent);
+        $scope.img_aspect = current_img_editor.scale($scope.img_percent);
+        return $scope.img_percent = $scope.img_aspect.ratio;
       };
       $scope.capture = function() {
         var dataurl, media, new_media;

@@ -20,8 +20,14 @@
     <button ng-click="switch()">Switch</button>
   </div>
   <div style="text-align:center; padding: 15px;">
-    <p>Aspect width: {{img_aspect.width}}</p>
-    <p>Aspect height: {{img_aspect.height}}</p>
+    <p>
+      Width: {{img_aspect.width}}
+      &nbsp;&nbsp;
+      Height: {{img_aspect.height}}
+    </p>
+    <p>
+      {{img_aspect.w}}:{{img_aspect.h}} ({{img_aspect.rw}}:{{img_aspect.rh}})
+    </p>
     <label>Aspect Ratio<label>
     <input value="" ng-model="img_percent">
     <button ng-click="scale_capture()">Capture with this Resolution</button>
