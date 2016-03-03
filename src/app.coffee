@@ -16,7 +16,20 @@ angular.module 'App', [
     $scope.img_src = null
     $scope.img_percent = 0.5
     $scope.img_aspect = null
+    $scope.img_url = 'sample.png'
     
+    $scope.switch = ->
+      urls = [
+        'sample.png',
+        'sample_small.gif',
+        'sample_long.jpg',
+        'sample_larger.jpg'
+      ]
+      idx = urls.indexOf($scope.img_url)
+      urls.splice(idx, 1)
+      src_url = urls[Math.floor(Math.random()*urls.length)]
+      $scope.img_url = src_url
+
     $scope.has_editor = ->
       Boolean(current_img_editor)
     
@@ -41,13 +54,12 @@ angular.module 'App', [
       new_media = current_img_editor.blob(media, dataurl)
       console.log new_media
 
-    clean_bagua = $rootScope.$on 'bagua.loaded', (e, img_editor)->
+    clean_bagua = $rootScope.$on 'bagua.loaded', (e, img_editor, reload)->
       current_img_editor = img_editor
       $scope.img_aspect = img_editor.aspect()
       $scope.$apply()
 
     $scope.$on '$destroy', ->
-      if current_img_editor
-        current_img_editor.destroy()
-      clean_bagua()
+      current_img_editor.destroy() if current_img_editor
+      clean_bagua() if clean_bagua
 ]

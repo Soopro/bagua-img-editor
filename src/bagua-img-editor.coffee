@@ -95,14 +95,14 @@ dataURLToBlob = (dataURL) ->
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.1.0'
+  ver = '0.2.0'
   now = Date.now()
   debug = false
   
   mimetypes =
-    'png': ['image/png']
+    'image/png': ['png']
     'image/jpeg': ['jpg', 'jpe', 'jpeg']
-    'gif': ['image/gif']
+    'image/gif': ['gif']
     'image/bmp': ['bm', 'bmp']
     
   $options = 
@@ -339,7 +339,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       if event == listener.event and node == listener.node
         node.removeEventListener event, listener.handler
         remove_idxs.push idx
-    _eventListeners.slice(remove_idxs)
+    _eventListeners.splice(remove_idxs, 1)
     return
   
   removeAllListeners = ->
@@ -590,19 +590,9 @@ baguaImageEditor = (editor, opt, is_debug)->
   destroy = ->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
-    removeAllListeners()
-    $img_editor.innerHTML = ''
-    $reisze_timer_id = null
-    $source_img = null
-    $current_img = null
-    $current_corner = null
-    $current_area = null
-    $crop_container = null
-    $cropped_img = null
-    $img_editor = null
-    $img_cropper = null
-    $img_dataurl = null
+    unload()
     loadedHook = null
+    $img_editor = null
 
   get_mimetype = (src)->
     ext = get_file_ext(src)
@@ -611,15 +601,30 @@ baguaImageEditor = (editor, opt, is_debug)->
         if ext in v
           return k
     return null
-
+  
+  unload = ->
+    if $img_editor and $current_img
+      $img_editor.innerHTML = ''
+      $reisze_timer_id = null
+      $source_img = null
+      $current_img = null
+      $current_corner = null
+      $current_area = null
+      $crop_container = null
+      $cropped_img = null
+      $img_cropper = null
+      $img_dataurl = null
+      removeAllListeners()
 
   load = (img_src)->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
-
+    
     if typeof img_src isnt 'string' or not get_mimetype(img_src)
       throw project_name+': Invalid image!'
-
+    
+    unload()
+    
     img = new Image()
     img.src = img_src
     img.onload = (e)->
@@ -697,19 +702,27 @@ angular.module 'baguaImageEditor', []
     restrict: 'EA',
     require: '?ngModel',
     scope:
-      imgSrc: '@'
-      imgType: '@'
+      imgSrcUrl: '='
+      imgType: '='
       options: '='
 
-    link: (scope, element, attrs, ngModel) ->
-      if not ngModel
-        return
-      debug = attrs.baguaImageEditor
+    link: (scope, element, attrs) ->
+      debug = attrs.baguaImageEditor or false
       img_editor = new baguaImageEditor(element[0], scope.options, debug)
-      if scope.imgSrc
-        img_editor.load scope.imgSrc, scope.imgType
+      loaded = false
+      if scope.imgSrcUrl
+        scope.$watch 'imgSrcUrl', (src)->
+          if src
+            img_editor.load src, scope.imgType
+      
       img_editor.hooks.loaded ->
-        $rootScope.$emit 'bagua.loaded', img_editor
+        if loaded
+          reload = true
+        else
+          reload = false
+          loaded = true
+        $rootScope.$emit 'bagua.loaded', img_editor, reload
+         
       
       
       # destroy
