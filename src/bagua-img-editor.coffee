@@ -61,6 +61,24 @@ getStyleSheet = (element, pseudo)->
   if element.currentStyle
     return element.currentStyle
 
+dataURLToBlob = (dataURL) ->
+  BASE64_MARKER = ';base64,'
+  if dataURL.indexOf(BASE64_MARKER) == -1
+    parts = dataURL.split(',')
+    contentType = parts[0].split(':')[1]
+    raw = parts[1]
+    return new Blob([ raw ], type: contentType)
+  parts = dataURL.split(BASE64_MARKER)
+  contentType = parts[0].split(':')[1]
+  raw = window.atob(parts[1])
+  rawLength = raw.length
+  uInt8Array = new Uint8Array(rawLength)
+  i = 0
+  while i < rawLength
+    uInt8Array[i] = raw.charCodeAt(i)
+    ++i
+  new Blob([ uInt8Array ], type: contentType)
+
 # ---------------------------------------
 # Module
 # ---------------------------------------
@@ -280,7 +298,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   resize_handler = (e)->
     pos_image()
     pos_area()
-    pos_cropper()
+    pos_cropper(true)
 
   
   _eventListeners = []
@@ -415,8 +433,11 @@ baguaImageEditor = (editor, opt, is_debug)->
     
     return
 
-    
-  pos_cropper = ->
+
+  last_area_width = 0
+  last_area_height = 0
+  
+  pos_cropper = (resizing)->
     if not $current_area
       return
     corner_offset = int($options.corner_size / 2)
@@ -426,19 +447,24 @@ baguaImageEditor = (editor, opt, is_debug)->
     area_height = $current_area.clientHeight
     min_size = $options.crop_min_size
     
-    left = $img_cropper.dataset.posLeft or 0
-    right = $img_cropper.dataset.posRight or 0
-    top = $img_cropper.dataset.posTop or 0
-    bottom = $img_cropper.dataset.posBottom or 0
+    left = parseInt($img_cropper.style.left) or 0
+    right = parseInt($img_cropper.style.right) or 0
+    top = parseInt($img_cropper.style.top) or 0
+    bottom = parseInt($img_cropper.style.bottom) or 0
     
-    left = between(left, 0, area_width-min_size)
-    right = between(right, 0, area_width-min_size)
-    top = between(top, 0, area_height-min_size)
-    bottom = between(bottom, 0, area_height-min_size)
-    console.log(left, top)
+    if resizing and last_area_width and last_area_height
+      precent_w = area_width / last_area_width
+      precent_h = area_height / last_area_height
+      left = between(int(left*precent_w), 0, area_width-min_size)
+      right = between(int(right*precent_w), 0, area_width-min_size)
+      top = between(int(top*precent_h), 0, area_height-min_size)
+      bottom = between(int(bottom*precent_h), 0, area_height-min_size)
     
     width = area_width-left-right
     height = area_height-top-bottom
+    
+    last_area_width = area_width
+    last_area_height = area_height
     
     $img_cropper.style.top = px(top)
     $img_cropper.style.left = px(left)
