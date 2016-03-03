@@ -1,38 +1,25 @@
 <!DOCTYPE html>
-<html style="height:100%;">
+<html style="height:100%;" ng-app="App">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sup Image Editor</title>
 </head>
-<body style="height:100%; background:#ccc;">
+<body style="height:100%; background:#eee;" ng-controller="appCtrl">
   <h1 style="text-align:center">Sup Image Editor</h1>
-  <div name="sup-img-editor"
+  <div bagua-image-editor='debug' img-src="{{'sample.jpg'}}" ng-model="test"
        style="width:50%;height:60%;position:relative;margin:0 auto;">
   </div>
   <div style="text-align:center; padding: 15px;">
-    <button class="btn-capture">Capture</button>
+    <button ng-click="capture()">Capture</button>
   </div>
   <div style="text-align:center; padding: 15px;">
-    <div class="capture-container"></div>
+    <div class="capture-container">
+      <img ng-src="{{img_data}}" style="border:1px solid #111;">
+    </div>
   </div>
+  <script src="angular.min.js"></script>
   <script src="bagua-img-editor.js"></script>
-  <script>
-  var img_editor = new baguaImageEditor('sup-img-editor', null, true);
-  img_editor.load('sample.jpg');
-  var capture_container = document.querySelector('.capture-container');
-  var btn_capture = document.querySelector('.btn-capture');
-
-  btn_capture.addEventListener('click', function(e){
-    console.log('Capture ---------->');
-    while (capture_container.firstChild) {
-        capture_container.removeChild(capture_container.firstChild);
-    }
-    img = new Image();
-    img.src = img_editor.capture();
-    img.style.border = '1px solid #111';
-    capture_container.appendChild(img);
-  });
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

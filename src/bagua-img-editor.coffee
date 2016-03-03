@@ -421,14 +421,29 @@ baguaImageEditor = (editor, opt, is_debug)->
       return
     corner_offset = int($options.corner_size / 2)
     corners = $img_cropper.querySelectorAll '['+CROP_CORNER+']'
-
-    left = parseInt($img_cropper.style.left) or 0
-    right = parseInt($img_cropper.style.right) or 0
-    top = parseInt($img_cropper.style.top) or 0
-    bottom = parseInt($img_cropper.style.bottom) or 0
-
-    width = $current_area.clientWidth-left-right
-    height = $current_area.clientHeight-top-bottom
+    
+    area_width = $current_area.clientWidth
+    area_height = $current_area.clientHeight
+    min_size = $options.crop_min_size
+    
+    left = $img_cropper.dataset.posLeft or 0
+    right = $img_cropper.dataset.posRight or 0
+    top = $img_cropper.dataset.posTop or 0
+    bottom = $img_cropper.dataset.posBottom or 0
+    
+    left = between(left, 0, area_width-min_size)
+    right = between(right, 0, area_width-min_size)
+    top = between(top, 0, area_height-min_size)
+    bottom = between(bottom, 0, area_height-min_size)
+    console.log(left, top)
+    
+    width = area_width-left-right
+    height = area_height-top-bottom
+    
+    $img_cropper.style.top = px(top)
+    $img_cropper.style.left = px(left)
+    $img_cropper.style.right = px(right)
+    $img_cropper.style.bottom = px(bottom)
     $img_cropper.style.width = px(width)
     $img_cropper.style.height = px(height)
     $crop_container.style.width = px(width)
@@ -504,10 +519,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       $img_editor = document.querySelector('[name='+ editor + ']')
     else if isHTMLElement(editor)
       $img_editor = editor
-    
-    if not window
-      throw project_name+': For browsers only!!'
-    
+
     if not $img_editor
       throw project_name+': Init image editor failed!!'
       return
@@ -533,8 +545,40 @@ baguaImageEditor = (editor, opt, is_debug)->
     destroy: destroy
   
   return methods
-    
 
+if not window
+  console.error project_name+': For browsers only!!'
 
-unless window.baguaImageEditor
-  window.baguaImageEditor = baguaImageEditor
+if window and not angular
+  window.baguaImageEditor = baguaImageEditor 
+
+# ---------------------------------------
+# Angular
+# ---------------------------------------
+
+angular.module 'baguaImageEditor', []
+
+.directive 'baguaImageEditor', [
+  '$rootScope'
+  (
+    $rootScope
+  ) ->
+    restrict: 'EA',
+    require: '?ngModel',
+    scope:
+      imgSrc: '@'
+      options: '='
+    link: (scope, element, attrs, ngModel) ->
+      if not scope.imgSrc or not ngModel
+        return
+      debug = attrs.baguaImageEditor
+      img_editor = new baguaImageEditor(element[0], scope.options, debug)
+      img_editor.load scope.imgSrc
+      
+      $rootScope.$emit 'bagua.loaded', img_editor
+      
+      # destroy
+      scope.$on '$destroy', ->
+        editor.destroy()
+
+]
