@@ -6,7 +6,7 @@
   baguaImageEditor = function(editor, opt, is_debug) {
     var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, aspect, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.2.1';
+    ver = '0.2.2';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -469,13 +469,15 @@
       if (!img_mimetype) {
         img_mimetype = _get_mimetype($source_img.src);
       }
-      src_width = $source_img.width * $aspect_ratio_num;
-      src_height = $source_img.height * $aspect_ratio_num;
+      src_width = int($source_img.width * $aspect_ratio_num);
+      src_height = int($source_img.height * $aspect_ratio_num);
       percent = src_width / $current_img.width;
       width = int((parseInt($crop_container.style.width) || 0) * percent);
       height = int((parseInt($crop_container.style.height) || 0) * percent);
       top = int((parseInt($crop_container.style.top) || 0) * percent);
       left = int((parseInt($crop_container.style.left) || 0) * percent);
+      width = min(width, src_width);
+      height = min(height, src_height);
       org_canvas = document.createElement('canvas');
       org_canvas.width = src_width;
       org_canvas.height = src_height;
@@ -629,9 +631,9 @@
 
   int = function(number, type) {
     var error;
-    if (type === 'ceil' || type === -1) {
+    if (type === 'ceil' || type === 1) {
       return Math.ceil(number);
-    } else if (type === 'floor' || type === 1) {
+    } else if (type === 'floor' || type === -1) {
       return Math.floor(number);
     }
     try {

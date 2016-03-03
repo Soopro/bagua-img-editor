@@ -16,8 +16,8 @@ angular.module 'App', [
     $scope.img_src = null
     $scope.img_percent = 1
     $scope.img_aspect = null
-    $scope.img_url = 'sample.png'
-    
+    $scope.img_url = 'sample_long.jpg'
+
     $scope.switch = ->
       urls = [
         'sample.png',
@@ -42,14 +42,22 @@ angular.module 'App', [
         return
       $scope.img_aspect = current_img_editor.scale($scope.img_percent)
       $scope.img_percent = $scope.img_aspect.ratio
-      
+    
+    url_filename = (url)->
+      for dec in ['#','?']
+        idx = $scope.img_url.indexOf(dec)
+        if idx > -1
+          url = url.substring(0, idx)
+      return url.substring(url.lastIndexOf('/')+1)
+    
     $scope.capture = ->
       if not current_img_editor
         return
       dataurl = current_img_editor.capture()
       $scope.img_src = dataurl
+
       media = 
-        name: 'sample.jpg'
+        name: url_filename($scope.img_url)
         lastModified: new Date()
         lastModifiedDate: new Date()
       new_media = current_img_editor.blob(media, dataurl)

@@ -2,12 +2,12 @@
 (function() {
   angular.module('App', ['baguaImageEditor']).controller("appCtrl", [
     '$scope', '$rootScope', function($scope, $rootScope) {
-      var clean_bagua, current_img_editor;
+      var clean_bagua, current_img_editor, url_filename;
       current_img_editor = null;
       $scope.img_src = null;
       $scope.img_percent = 1;
       $scope.img_aspect = null;
-      $scope.img_url = 'sample.png';
+      $scope.img_url = 'sample_long.jpg';
       $scope["switch"] = function() {
         var idx, src_url, urls;
         urls = ['sample.png', 'sample_small.gif', 'sample_long.jpg', 'sample_larger.jpg'];
@@ -30,6 +30,18 @@
         $scope.img_aspect = current_img_editor.scale($scope.img_percent);
         return $scope.img_percent = $scope.img_aspect.ratio;
       };
+      url_filename = function(url) {
+        var dec, i, idx, len, ref;
+        ref = ['#', '?'];
+        for (i = 0, len = ref.length; i < len; i++) {
+          dec = ref[i];
+          idx = $scope.img_url.indexOf(dec);
+          if (idx > -1) {
+            url = url.substring(0, idx);
+          }
+        }
+        return url.substring(url.lastIndexOf('/') + 1);
+      };
       $scope.capture = function() {
         var dataurl, media, new_media;
         if (!current_img_editor) {
@@ -38,7 +50,7 @@
         dataurl = current_img_editor.capture();
         $scope.img_src = dataurl;
         media = {
-          name: 'sample.jpg',
+          name: url_filename($scope.img_url),
           lastModified: new Date(),
           lastModifiedDate: new Date()
         };

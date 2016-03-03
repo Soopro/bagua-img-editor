@@ -15,7 +15,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.2.1'
+  ver = '0.2.2'
   now = Date.now()
   debug = false
   
@@ -485,17 +485,19 @@ baguaImageEditor = (editor, opt, is_debug)->
     if not img_mimetype
       img_mimetype = _get_mimetype($source_img.src)
     
-    src_width = $source_img.width * $aspect_ratio_num
-    src_height = $source_img.height * $aspect_ratio_num
-    
+    src_width = int($source_img.width * $aspect_ratio_num)
+    src_height = int($source_img.height * $aspect_ratio_num)
+
     percent = src_width / $current_img.width
-    
-    width = int((parseInt($crop_container.style.width) or 0) * percent)
+
+    width = int((parseInt($crop_container.style.width) or 0)* percent)
     height = int((parseInt($crop_container.style.height) or 0) * percent)
     top = int((parseInt($crop_container.style.top) or 0) * percent)
     left = int((parseInt($crop_container.style.left) or 0) * percent)
     
-    
+    width = min(width, src_width)
+    height = min(height, src_height)
+
     org_canvas = document.createElement('canvas')
     org_canvas.width = src_width
     org_canvas.height = src_height
@@ -639,9 +641,9 @@ isHTMLElement = (o) ->
   return result
 
 int = (number, type)->
-  if type == 'ceil' or type == -1
+  if type == 'ceil' or type == 1
     return Math.ceil(number)
-  else if type == 'floor' or type == 1
+  else if type == 'floor' or type == -1
     return Math.floor(number)
   try
     return Math.round(number)
