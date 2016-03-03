@@ -531,8 +531,6 @@ baguaImageEditor = (editor, opt, is_debug)->
                                     encoder or $options.encoder_options)
     return $img_dataurl
   
-  dataurl = ->
-    return $img_dataurl
   
   blob = (media, dataurl)->
     if not $img_dataurl
@@ -642,7 +640,6 @@ baguaImageEditor = (editor, opt, is_debug)->
     load: load
     capture: capture
     capture_blob: capture_blob
-    dataurl: dataurl
     blob: blob
     destroy: destroy
     hooks:
