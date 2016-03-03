@@ -17,7 +17,12 @@ angular.module 'App', [
 
     $scope.has_editor = ->
       Boolean(current_img_editor)
-
+    
+    $scope.scale = ->
+      if not current_img_editor
+        return
+      $scope.img_resolution = current_img_editor.scale($scope.img_percent)
+      
     $scope.capture = ->
       if not current_img_editor
         return

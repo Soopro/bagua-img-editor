@@ -106,7 +106,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     'image/bmp': ['bm', 'bmp']
     
   $options = 
-    corner_size: 16
+    corner_size: 12
     crop_min_size: 32
     encoder_options: 1
     mimetype: 'image/png'
@@ -509,7 +509,22 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.left = px(int(width * dim.pos[0]) - corner_offset)
       corner.style.top = px(int(height * dim.pos[1]) - corner_offset)
     return
-
+  
+  scale = (precent)->
+    if not $source_img or typeof precent isnt 'number'
+      return
+    width = $source_img.width
+    height = $source_img.height
+    $source_img.width = int(width*precent)
+    $source_img.height = int(height*precent)
+    set_image($source_img)
+    set_area()
+    set_cropper()
+    return {
+      width: $source_img.width
+      height: $source_img.height
+    }
+  
   capture = (encoder, mimetype)->
     if not $current_img
       return
@@ -640,6 +655,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   methods = 
     init: init
     load: load
+    scale: scale
     capture: capture
     capture_blob: capture_blob
     blob: blob

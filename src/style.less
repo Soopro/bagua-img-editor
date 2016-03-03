@@ -1,12 +1,16 @@
 /* ---------------------------------------
 /* Bagua Image Editor styles
 /* --------------------------------------- */
+@primary-color: #7eae64;
 
 *[bagua-image-editor] {
   & [cropper] {
-    border:1px solid #111;
+    outline: 2px dashed @primary-color;
   }
-  
+  & [cropper] [crop-corner] {
+    border-radius: 50%;
+    background: @primary-color;
+  }
 }
 
 
