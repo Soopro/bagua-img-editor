@@ -109,7 +109,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     corner_size: 16
     crop_min_size: 32
     encoder_options: 1
-    media_type: 'image/png'
+    mimetype: 'image/png'
   
   $reisze_timer_id = null
   
@@ -127,6 +127,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   
   EDITOR_ID = 'bagua-editor-id'
   CROP_CORNER = 'crop-corner'
+  CROPPER = 'cropper'
   
 
   
@@ -372,6 +373,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     cropper.style.right = 0
     cropper.style.bottom = 0
     cropper.style.zIndex = 99
+    cropper.setAttribute(CROPPER, now)
     $current_area.appendChild(cropper)
     
     crop_container = document.createElement('DIV')
