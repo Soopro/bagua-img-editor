@@ -294,6 +294,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     cropper.style.bottom = 0
     cropper.style.zIndex = 99
     cropper.setAttribute(CROPPER, now)
+    cropper.classList.add(CROPPER)
     $current_area.appendChild(cropper)
     
     crop_container = document.createElement('DIV')
@@ -323,6 +324,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       corner.style.zIndex = 99-index
       corner.style.backgroundColor = 'blue' if debug
       corner.setAttribute(CROP_CORNER, ori)
+      corner.classList.add(CROP_CORNER)
       cropper.appendChild(corner)
       index++
     
@@ -603,6 +605,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     
     debug = is_debug
     $img_editor.setAttribute(EDITOR_ID, now)
+    $img_editor.style.position = 'relative'
     $img_editor.style.background = 'yellow' if debug
     addListener window, 'resize', resize_handler
   
@@ -731,7 +734,7 @@ angular.module 'baguaImageEditor', []
       options: '='
 
     link: (scope, element, attrs) ->
-      debug = attrs.baguaImageEditor or false
+      debug = attrs.debug or false
       img_editor = new baguaImageEditor(element[0], scope.options, debug)
       loaded = false
       if scope.imgSrcUrl
@@ -746,11 +749,9 @@ angular.module 'baguaImageEditor', []
           reload = false
           loaded = true
         $rootScope.$emit 'bagua.loaded', img_editor, reload
-         
-      
-      
+
       # destroy
       scope.$on '$destroy', ->
-        editor.destroy()
+        img_editor.destroy() if img_editor
 
 ]
