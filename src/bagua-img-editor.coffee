@@ -725,7 +725,6 @@ angular.module 'baguaImageEditor', []
     $rootScope
   ) ->
     restrict: 'EA',
-    require: '?ngModel',
     scope:
       imgSrcUrl: '='
       imgType: '='
