@@ -276,8 +276,7 @@ baguaImageEditor = (editor, opt, is_debug)->
 
 # ---------------- Functions --------------  
   set_image = (img) ->
-    $source_img = img
-    current_img = img.cloneNode()    
+    current_img = img.cloneNode()
     current_img.style.maxWidth = '100%'
     current_img.style.maxHeight = '100%'
     current_img.style.position = 'relative'
@@ -614,20 +613,23 @@ baguaImageEditor = (editor, opt, is_debug)->
 
     unload()
 
-    img = new Image()
+    $source_img = new Image()
+    
     if $options.cors
-      img.setAttribute('crossOrigin', 'anonymous')
-    img.src = img_src
-    img.onload = (e)->
+      $source_img.setAttribute('crossOrigin', 'anonymous')
+      
+    $source_img.src = img_src
+    
+    $source_img.onload = (e)->
       if not $img_editor
         return
-      set_image(img)
+      set_image($source_img)
       set_area()
       set_cropper()
 
       if typeof loadedHook == 'function'
         loadedHook()
-  
+    
   
   # ---------------- Hooks --------------
   set_loaded_hook = (func)->
