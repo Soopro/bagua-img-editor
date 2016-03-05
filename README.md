@@ -35,7 +35,8 @@ Angular directive :
   1. img_src: **[ str ]** image src, could use `dataurl`.
   2. recipe: **[ dict ]** (optional) recipe create by this editor, returned by function `recipe()`.
 
-* reload: reload image, will use last image src url.
+* reload: reload image
+  1. img_src: **[ str ]** (optional) image src, could use `dataurl`. Use last image src url if not give.
   
 * unload: unload editor, clean up image and listeners, ready to reload.
 

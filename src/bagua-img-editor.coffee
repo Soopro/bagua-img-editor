@@ -634,8 +634,9 @@ baguaImageEditor = (editor, opt, is_debug)->
       $img_dataurl = null
       $touched = false
 
-  reload = ->
-    img_src = $source_img.src
+  reload = (img_src)->
+    if not img_src
+      img_src = $source_img.src
     unload()
     load(img_src)
     
