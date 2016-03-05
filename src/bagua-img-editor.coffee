@@ -634,7 +634,11 @@ baguaImageEditor = (editor, opt, is_debug)->
       $img_dataurl = null
       $touched = false
 
-
+  reload = ->
+    img_src = $source_img.src
+    unload()
+    load(img_src)
+    
   load = (img_src, recipe)->
     if not $img_editor
       throw project_name+': Image Editor can not load before inited!'
@@ -650,7 +654,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       $source_img.setAttribute('crossOrigin', 'anonymous')
       
     $source_img.src = img_src
-    
+
     $source_img.onload = (e)->
       if not $img_editor
         return
@@ -699,6 +703,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   methods = 
     init: init
     load: load
+    reload: reload
     unload: unload
     recipe: recipe
     mimetype: mimetype
