@@ -59,6 +59,6 @@ Angular directive :
 * destroy: destroy editor clean up everything.
 
 * hooks:
-    * loaded: register hook for loaded
+  1. loaded: register hook for loaded
     
 Angular directive might not need: `init`, `load`, `unload`, `hooks`, `destory`
