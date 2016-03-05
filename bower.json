@@ -1,0 +1,24 @@
+{
+  "name": "svg-sprite-render",
+  "version": "0.3.1",
+  "homepage": "https://github.com/Soopro/bagua-img-editor",
+  "authors": [
+    "Redy <redy@soopro.com>"
+  ],
+  "description": "A Image Editor for resize and crop images and return dataurl or blob or a recipe for CDN usage. No file upload funciton at all.",
+  "keywords": [
+    "image",
+    "crop",
+    "resize",
+    "editor"
+  ],
+  "dependencies": {},
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

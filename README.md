@@ -1,6 +1,6 @@
 # Bagua Image Editor
 
-A Image Editor for resize and crop images.
+A Image Editor for resize and crop images and return dataurl or blob or a recipe for CDN usage. No file upload funciton at all.
 
 ###  Usage
 
