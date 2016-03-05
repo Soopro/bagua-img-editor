@@ -7,15 +7,28 @@
 # Description: A Image Editor for resize and crop images.
 
 # ---- Usage ----
-# On your html create a editor:
+#
+# Html editor:
 # <div sup-image-editor></div>
+#
+# Angular directive :
+# <div sup-image-editor img-src-url="image_src" img-recipe="media.recipe"
+#  options="{'cors':'false'}"></div>
+#
+# img-recipe: A recipe return by `recipe()`. it's for restore the crop area.
+# 
+# options:
+#    corner_size: <number> corner size in px, default is 12
+#    crop_min_size: <number> minimal corp size in px, default is 32
+#    cors: true: <boolean> cross orgian support for <img>
+#
 # ------------------------------->
 
 
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.3.0'
+  ver = '0.3.1'
   now = Date.now()
   debug = false
   
@@ -286,16 +299,23 @@ baguaImageEditor = (editor, opt, is_debug)->
     pos_image()
     return current_img
   
-  set_cropper = ->
+  set_cropper = (recipe)->
     if not $current_area or not $current_img
       throw project_name+': Can not set copper before set area and img.'
       return
+      
+    if recipe and recipe.cropper_area
+      _crop_top = px(recipe.cropper_area[0])
+      _crop_right = px(recipe.cropper_area[1])
+      _crop_bottom = px(recipe.cropper_area[2])
+      _crop_left = px(recipe.cropper_area[3])
+
     cropper = document.createElement('DIV')
     cropper.style.position = 'absolute'
-    cropper.style.top = 0
-    cropper.style.left = 0
-    cropper.style.right = 0
-    cropper.style.bottom = 0
+    cropper.style.top = _crop_top or 0
+    cropper.style.right = _crop_right or 0
+    cropper.style.bottom = _crop_bottom or 0
+    cropper.style.left = _crop_left or 0
     cropper.style.zIndex = 99
     cropper.setAttribute(CROPPER, now)
     cropper.classList.add(CROPPER)
@@ -352,9 +372,10 @@ baguaImageEditor = (editor, opt, is_debug)->
     $img_editor.appendChild(area)
     $current_area = area
     pos_area()
+    
     return area
 
-  pos_area = ->
+  pos_area = ()->
     if not $current_img or not $current_area
       return
     $current_area.style.top = $current_img.style.top
@@ -467,6 +488,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   
   _get_mimetype = (src)->
     ext = get_file_ext(src)
+    
     if ext
       for k,v of mimetypes
         if ext in v
@@ -490,6 +512,14 @@ baguaImageEditor = (editor, opt, is_debug)->
     crop_w = min(crop_w, width)
     crop_h = min(crop_h, height)
     
+    cropper_area = [
+      parseInt($img_cropper.style.top) or 0
+      parseInt($img_cropper.style.right) or 0
+      parseInt($img_cropper.style.bottom) or 0
+      parseInt($img_cropper.style.left) or 0
+    ]
+    
+    
     is_modified = crop_w != width or crop_h != height or not $touched
     
     return {
@@ -503,6 +533,7 @@ baguaImageEditor = (editor, opt, is_debug)->
         h: crop_h
         x: crop_x
         y: crop_y
+      cropper_area: cropper_area
       aspect_ratio: $aspect_ratio_num
       aw: rw
       ah: rh
@@ -604,7 +635,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       $touched = false
 
 
-  load = (img_src)->
+  load = (img_src, recipe)->
     if not $img_editor
       throw project_name+': Image Editor can not load before inited!'
     
@@ -625,7 +656,7 @@ baguaImageEditor = (editor, opt, is_debug)->
         return
       set_image($source_img)
       set_area()
-      set_cropper()
+      set_cropper(recipe)
 
       if typeof loadedHook == 'function'
         loadedHook()
@@ -732,11 +763,15 @@ getStyleSheet = (element, pseudo)->
   if element.currentStyle
     return element.currentStyle
 
-get_file_ext = (filename)->
+get_file_ext = (str)->
   try
-    pair = filename.split('.')
+    str = str.split('?')[0].split('#')[0]
+    if str.substr(-1) is '/'
+      str = str.substr(0, str.length - 1)
+    pair = str.split('.')
     if pair.length > 1
-      return pair.pop()
+      ext = pair.pop()
+      return ext.toLowerCase()
     return ''
   catch
     return ''
@@ -781,7 +816,7 @@ angular.module 'baguaImageEditor', []
     restrict: 'EA',
     scope:
       imgSrcUrl: '='
-      imgType: '='
+      imgRecipe: '='
       options: '='
 
     link: (scope, element, attrs) ->
@@ -791,7 +826,7 @@ angular.module 'baguaImageEditor', []
       if scope.imgSrcUrl
         scope.$watch 'imgSrcUrl', (src)->
           if src
-            img_editor.load src, scope.imgType
+            img_editor.load src, scope.imgRecipe
       
       img_editor.hooks.loaded ->
         if loaded
