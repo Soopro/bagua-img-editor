@@ -6,7 +6,7 @@
       current_img_editor = null;
       $scope.img_src = null;
       $scope.img_percent = 1;
-      $scope.img_aspect = null;
+      $scope.img_recipe = null;
       $scope.img_url = 'sample_long.jpg';
       $scope["switch"] = function() {
         var idx, src_url, urls;
@@ -19,16 +19,12 @@
       $scope.has_editor = function() {
         return Boolean(current_img_editor);
       };
-      $scope.scale_capture = function() {
-        $scope.scale();
-        return $scope.capture();
-      };
       $scope.scale = function() {
         if (!current_img_editor) {
           return;
         }
-        $scope.img_aspect = current_img_editor.scale($scope.img_percent);
-        return $scope.img_percent = $scope.img_aspect.ratio;
+        $scope.img_recipe = current_img_editor.scale($scope.img_percent);
+        return $scope.img_percent = $scope.img_recipe.aspect_ratio;
       };
       url_filename = function(url) {
         var dec, i, idx, len, ref;
@@ -47,6 +43,8 @@
         if (!current_img_editor) {
           return;
         }
+        $scope.img_recipe = current_img_editor.scale($scope.img_percent);
+        $scope.img_percent = $scope.img_recipe.aspect_ratio;
         dataurl = current_img_editor.capture();
         $scope.img_src = dataurl;
         media = {
@@ -59,7 +57,7 @@
       };
       clean_bagua = $rootScope.$on('bagua.loaded', function(e, img_editor, reload) {
         current_img_editor = img_editor;
-        $scope.img_aspect = img_editor.aspect();
+        $scope.img_recipe = img_editor.recipe();
         return $scope.$apply();
       });
       return $scope.$on('$destroy', function() {

@@ -21,16 +21,20 @@
   </div>
   <div style="text-align:center; padding: 15px;">
     <p>
-      Width: {{img_aspect.width}}
+      Width: {{img_recipe.width}}
       &nbsp;&nbsp;
-      Height: {{img_aspect.height}}
+      Height: {{img_recipe.height}}
     </p>
     <p>
-      {{img_aspect.w}}:{{img_aspect.h}} ({{img_aspect.rw}}:{{img_aspect.rh}})
+      {{img_recipe.aw}}:{{img_recipe.h}} ({{img_recipe.rw}}:{{img_recipe.rh}})
+    </p>
+    <h4>Crop</h4>
+    <p>
+      w:{{img_recipe.crop.w}} h:{{img_recipe.crop.h}}
+      (x:{{img_recipe.crop.x}} y:{{img_recipe.crop.y}})
     </p>
     <label>Aspect Ratio<label>
     <input value="" ng-model="img_percent">
-    <button ng-click="scale_capture()">Capture with this Resolution</button>
   </div>
   <div style="text-align:center; padding: 15px;">
     <div class="capture-container">

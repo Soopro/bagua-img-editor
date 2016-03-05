@@ -4,9 +4,9 @@
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   baguaImageEditor = function(editor, opt, is_debug) {
-    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, aspect, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
+    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.2.2';
+    ver = '0.3.0';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -17,7 +17,8 @@
     };
     $options = {
       corner_size: 12,
-      crop_min_size: 32
+      crop_min_size: 32,
+      cors: true
     };
     $reisze_timer_id = null;
     $aspect_ratio_num = 1;
@@ -30,6 +31,7 @@
     $img_editor = null;
     $img_cropper = null;
     $img_dataurl = null;
+    $touched = false;
     EDITOR_ID = 'bagua-editor-id';
     CROP_CORNER = 'crop-corner';
     CROPPER = 'cropper';
@@ -104,6 +106,7 @@
         return e.stopPropagation();
       };
       dragstop = function(e) {
+        $touched = true;
         document.removeEventListener('mousemove', dragging);
         document.removeEventListener('mouseup', dragstop);
         e.preventDefault();
@@ -200,6 +203,7 @@
       };
       dragstop = function(e) {
         $current_corner = null;
+        $touched = true;
         document.removeEventListener('mousemove', dragging);
         document.removeEventListener('mouseup', dragstop);
         e.preventDefault();
@@ -247,17 +251,17 @@
       _eventListeners.length = 0;
     };
     set_image = function(img) {
-      var curren_img;
+      var current_img;
       $source_img = img;
-      curren_img = img.cloneNode();
-      curren_img.style.maxWidth = '100%';
-      curren_img.style.maxHeight = '100%';
-      curren_img.style.position = 'relative';
-      curren_img.style.pointerEvents = 'none';
-      $img_editor.appendChild(curren_img);
-      $current_img = curren_img;
+      current_img = img.cloneNode();
+      current_img.style.maxWidth = '100%';
+      current_img.style.maxHeight = '100%';
+      current_img.style.position = 'relative';
+      current_img.style.pointerEvents = 'none';
+      $img_editor.appendChild(current_img);
+      $current_img = current_img;
       pos_image();
-      return curren_img;
+      return current_img;
     };
     set_cropper = function() {
       var corner, crop_container, cropped_img, cropper, dim, index, ori;
@@ -273,6 +277,7 @@
       cropper.style.bottom = 0;
       cropper.style.zIndex = 99;
       cropper.setAttribute(CROPPER, now);
+      cropper.classList.add(CROPPER);
       $current_area.appendChild(cropper);
       crop_container = document.createElement('DIV');
       crop_container.style.position = 'relative';
@@ -304,6 +309,7 @@
           corner.style.backgroundColor = 'blue';
         }
         corner.setAttribute(CROP_CORNER, ori);
+        corner.classList.add(CROP_CORNER);
         cropper.appendChild(corner);
         index++;
       }
@@ -337,18 +343,32 @@
       $current_area.style.left = $current_img.style.left;
       $current_area.style.right = $current_img.style.left;
       $current_area.style.bottom = $current_img.style.top;
-      $current_area.style.width = px($current_img.width);
-      $current_area.style.height = px($current_img.height);
+      $current_area.style.width = px($current_img.clientWidth);
+      $current_area.style.height = px($current_img.clientHeight);
     };
     pos_image = function() {
-      var editor_h, editor_w, img_h, img_w;
-      if (!$current_img) {
+      var editor_h, editor_w, img_h, img_w, p_h, p_w;
+      if (!$current_img || !$source_img) {
         return;
       }
       editor_w = $img_editor.clientWidth;
       editor_h = $img_editor.clientHeight;
-      img_w = $current_img.width;
-      img_h = $current_img.height;
+      if (!$current_img.width || !$current_img.height) {
+        img_w = $source_img.width;
+        img_h = $source_img.height;
+        if (img_w > editor_w) {
+          p_w = editor_w / img_w;
+          img_w = editor_w;
+          img_h = int(img_h * p_w);
+        }
+        if (img_h > editor_h) {
+          p_h = editor_h / img_h;
+          img_w = int(img_w * p_h);
+          img_h = editor_h;
+        }
+        $current_img.width = img_w;
+        $current_img.height = img_h;
+      }
       $current_img.style.top = px((editor_h - $current_img.height) / 2);
       $current_img.style.left = px((editor_w - $current_img.width) / 2);
     };
@@ -433,19 +453,40 @@
       }
       return null;
     };
-    aspect = function() {
-      var r, rh, rw;
+    recipe = function() {
+      var crop_h, crop_w, crop_x, crop_y, height, is_modified, percent, r, rh, rw, width;
       r = _ratio($source_img.width, $source_img.height);
       rw = int($source_img.width / r);
       rh = int($source_img.height / r);
+      width = int($source_img.width * $aspect_ratio_num);
+      height = int($source_img.height * $aspect_ratio_num);
+      percent = width / $current_img.clientWidth;
+      crop_w = int((parseInt($crop_container.style.width) || 0) * percent);
+      crop_h = int((parseInt($crop_container.style.height) || 0) * percent);
+      crop_x = int((parseInt($crop_container.style.left) || 0) * percent);
+      crop_y = int((parseInt($crop_container.style.top) || 0) * percent);
+      crop_w = min(crop_w, width);
+      crop_h = min(crop_h, height);
+      is_modified = crop_w !== width || crop_h !== height || !$touched;
       return {
-        width: int($source_img.width * $aspect_ratio_num),
-        height: int($source_img.height * $aspect_ratio_num),
-        ratio: $aspect_ratio_num,
-        rw: rw,
-        rh: rh,
-        w: _ten(rw, rh)[0],
-        h: _ten(rw, rh)[1]
+        width: width,
+        height: height,
+        source: {
+          w: $source_img.width,
+          h: $source_img.height
+        },
+        crop: {
+          w: crop_w,
+          h: crop_h,
+          x: crop_x,
+          y: crop_y
+        },
+        aspect_ratio: $aspect_ratio_num,
+        aw: rw,
+        ah: rh,
+        rw: _ten(rw, rh)[0],
+        rh: _ten(rw, rh)[1],
+        modified: is_modified
       };
     };
     scale = function(aspect_ratio_num) {
@@ -453,41 +494,37 @@
         return;
       }
       aspect_ratio_num = Number(aspect_ratio_num);
+      if ($aspect_ratio_num !== aspect_ratio_num) {
+        $touched = true;
+      }
       if (aspect_ratio_num && aspect_ratio_num <= 1) {
         $aspect_ratio_num = aspect_ratio_num;
       }
-      return aspect();
+      return recipe();
     };
     mimetype = function() {
       return _get_mimetype($source_img.src);
     };
     capture = function(img_mimetype, encoder) {
-      var canvas, canvas_context, height, left, org_canvas, org_context, percent, src_height, src_width, top, width;
+      var canvas, canvas_context, img_crop, img_recipe, org_canvas, org_context;
       if (!$current_img) {
         return;
       }
       if (!img_mimetype) {
         img_mimetype = _get_mimetype($source_img.src);
       }
-      src_width = int($source_img.width * $aspect_ratio_num);
-      src_height = int($source_img.height * $aspect_ratio_num);
-      percent = src_width / $current_img.width;
-      width = int((parseInt($crop_container.style.width) || 0) * percent);
-      height = int((parseInt($crop_container.style.height) || 0) * percent);
-      top = int((parseInt($crop_container.style.top) || 0) * percent);
-      left = int((parseInt($crop_container.style.left) || 0) * percent);
-      width = min(width, src_width);
-      height = min(height, src_height);
+      img_recipe = recipe();
       org_canvas = document.createElement('canvas');
-      org_canvas.width = src_width;
-      org_canvas.height = src_height;
+      org_canvas.width = img_recipe.width;
+      org_canvas.height = img_recipe.height;
       org_context = org_canvas.getContext('2d');
-      org_context.drawImage($source_img, 0, 0, src_width, src_height);
+      org_context.drawImage($source_img, 0, 0, img_recipe.width, img_recipe.height);
+      img_crop = img_recipe.crop;
       canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = img_crop.w;
+      canvas.height = img_crop.h;
       canvas_context = canvas.getContext('2d');
-      canvas_context.drawImage(org_canvas, left, top, width, height, 0, 0, width, height);
+      canvas_context.drawImage(org_canvas, img_crop.x, img_crop.y, img_crop.w, img_crop.h, 0, 0, img_crop.w, img_crop.h);
       $img_dataurl = canvas.toDataURL(img_mimetype, encoder);
       return $img_dataurl;
     };
@@ -507,7 +544,7 @@
       }
       new_media = dataURLToBlob(dataurl);
       new_media.name = media.name;
-      new_media.lastModified = media.lastModified;
+      new_media.lastModified = media.lastModified || document.lastModified;
       new_media.lastModifiedDate = new Date();
       return new_media;
     };
@@ -526,12 +563,14 @@
       if (!$img_editor) {
         throw project_name + ': Image Editor not inited!';
       }
+      console.log('---- Bagua Image Editor destroyed ----');
       unload();
       loadedHook = null;
       return $img_editor = null;
     };
     unload = function() {
       if ($img_editor && $current_img) {
+        removeAllListeners();
         $img_editor.innerHTML = '';
         $reisze_timer_id = null;
         $source_img = null;
@@ -542,19 +581,22 @@
         $cropped_img = null;
         $img_cropper = null;
         $img_dataurl = null;
-        return removeAllListeners();
+        return $touched = false;
       }
     };
     load = function(img_src) {
       var img;
       if (!$img_editor) {
-        throw project_name + ': Image Editor not inited!';
+        throw project_name + ': Image Editor can not load before inited!';
       }
       if (typeof img_src !== 'string' || !_get_mimetype(img_src)) {
         throw project_name + ': Invalid image!';
       }
       unload();
       img = new Image();
+      if ($options.cors) {
+        img.setAttribute('crossOrigin', 'anonymous');
+      }
       img.src = img_src;
       return img.onload = function(e) {
         if (!$img_editor) {
@@ -592,10 +634,13 @@
       }
       debug = is_debug;
       $img_editor.setAttribute(EDITOR_ID, now);
+      $img_editor.style.position = 'relative';
       if (debug) {
         $img_editor.style.background = 'yellow';
       }
-      return addListener(window, 'resize', resize_handler);
+      addListener(window, 'resize', resize_handler);
+      console.log('---- Bagua Image Editor inited ----');
+      return console.log('version:', ver);
     };
     if (editor) {
       init(editor, opt, is_debug);
@@ -604,7 +649,7 @@
       init: init,
       load: load,
       unload: unload,
-      aspect: aspect,
+      recipe: recipe,
       mimetype: mimetype,
       scale: scale,
       capture: capture,
@@ -731,7 +776,6 @@
     '$rootScope', function($rootScope) {
       return {
         restrict: 'EA',
-        require: '?ngModel',
         scope: {
           imgSrcUrl: '=',
           imgType: '=',
@@ -739,7 +783,7 @@
         },
         link: function(scope, element, attrs) {
           var debug, img_editor, loaded;
-          debug = attrs.baguaImageEditor || false;
+          debug = attrs.debug || false;
           img_editor = new baguaImageEditor(element[0], scope.options, debug);
           loaded = false;
           if (scope.imgSrcUrl) {
@@ -760,7 +804,9 @@
             return $rootScope.$emit('bagua.loaded', img_editor, reload);
           });
           return scope.$on('$destroy', function() {
-            return editor.destroy();
+            if (img_editor) {
+              return img_editor.destroy();
+            }
           });
         }
       };

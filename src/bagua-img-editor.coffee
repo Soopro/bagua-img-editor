@@ -15,7 +15,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.2.2'
+  ver = '0.3.0'
   now = Date.now()
   debug = false
   
@@ -28,6 +28,7 @@ baguaImageEditor = (editor, opt, is_debug)->
   $options = 
     corner_size: 12
     crop_min_size: 32
+    cors: true
   
   $reisze_timer_id = null
   
@@ -44,6 +45,8 @@ baguaImageEditor = (editor, opt, is_debug)->
   $img_editor = null
   $img_cropper = null
   $img_dataurl = null
+  
+  $touched = false
   
   EDITOR_ID = 'bagua-editor-id'
   CROP_CORNER = 'crop-corner'
@@ -117,12 +120,13 @@ baguaImageEditor = (editor, opt, is_debug)->
       $img_cropper.style.left = px(new_left)
       $img_cropper.style.right = px(new_right)
       $img_cropper.style.bottom = px(new_bottom)
-      
+
       pos_cropper()
       e.preventDefault()
       e.stopPropagation()
       
     dragstop = (e)->
+      $touched = true
       document.removeEventListener 'mousemove', dragging
       document.removeEventListener 'mouseup', dragstop
       e.preventDefault()
@@ -216,12 +220,13 @@ baguaImageEditor = (editor, opt, is_debug)->
       $img_cropper.style.right = px(right) if right isnt null
 
       pos_cropper()
-      
+
       e.preventDefault()
       e.stopPropagation()
       
     dragstop = (e)->
       $current_corner = null
+      $touched = true
       document.removeEventListener 'mousemove', dragging
       document.removeEventListener 'mouseup', dragstop
       e.preventDefault()
@@ -272,15 +277,15 @@ baguaImageEditor = (editor, opt, is_debug)->
 # ---------------- Functions --------------  
   set_image = (img) ->
     $source_img = img
-    curren_img = img.cloneNode()
-    curren_img.style.maxWidth = '100%'
-    curren_img.style.maxHeight = '100%'
-    curren_img.style.position = 'relative'
-    curren_img.style.pointerEvents = 'none'
-    $img_editor.appendChild(curren_img)
-    $current_img = curren_img
+    current_img = img.cloneNode()    
+    current_img.style.maxWidth = '100%'
+    current_img.style.maxHeight = '100%'
+    current_img.style.position = 'relative'
+    current_img.style.pointerEvents = 'none'
+    $img_editor.appendChild(current_img)
+    $current_img = current_img
     pos_image()
-    return curren_img
+    return current_img
   
   set_cropper = ->
     if not $current_area or not $current_img
@@ -357,23 +362,38 @@ baguaImageEditor = (editor, opt, is_debug)->
     $current_area.style.left = $current_img.style.left
     $current_area.style.right = $current_img.style.left
     $current_area.style.bottom = $current_img.style.top
-    $current_area.style.width = px($current_img.width)
-    $current_area.style.height = px($current_img.height)
+    $current_area.style.width = px($current_img.clientWidth)
+    $current_area.style.height = px($current_img.clientHeight)
 
     return
 
 
   pos_image = ->
-    if not $current_img
+    if not $current_img or not $source_img
       return
     editor_w = $img_editor.clientWidth
     editor_h = $img_editor.clientHeight
-    img_w = $current_img.width
-    img_h = $current_img.height
-    
+
+    if not $current_img.width or not $current_img.height
+      img_w = $source_img.width
+      img_h = $source_img.height
+
+      if img_w > editor_w
+        p_w = editor_w / img_w
+        img_w = editor_w
+        img_h = int(img_h * p_w)
+
+      if img_h > editor_h
+        p_h = editor_h / img_h
+        img_w = int(img_w * p_h)
+        img_h = editor_h
+
+      $current_img.width = img_w
+      $current_img.height = img_h
+
     $current_img.style.top = px((editor_h - $current_img.height) / 2)
     $current_img.style.left = px((editor_w - $current_img.width) / 2)
-    
+
     return
 
 
@@ -454,32 +474,59 @@ baguaImageEditor = (editor, opt, is_debug)->
           return k
     return null
     
-  aspect = ->
+  recipe = ->
     r = _ratio($source_img.width, $source_img.height)
     rw = int($source_img.width / r)
     rh = int($source_img.height / r)
+    width = int($source_img.width * $aspect_ratio_num)
+    height = int($source_img.height * $aspect_ratio_num)
+    
+    percent = width / $current_img.clientWidth
+    
+    crop_w = int((parseInt($crop_container.style.width) or 0)* percent)
+    crop_h = int((parseInt($crop_container.style.height) or 0) * percent)
+    crop_x = int((parseInt($crop_container.style.left) or 0) * percent)
+    crop_y = int((parseInt($crop_container.style.top) or 0) * percent)
+    
+    crop_w = min(crop_w, width)
+    crop_h = min(crop_h, height)
+    
+    is_modified = crop_w != width or crop_h != height or not $touched
+    
     return {
-      width: int($source_img.width * $aspect_ratio_num)
-      height: int($source_img.height * $aspect_ratio_num)
-      ratio: $aspect_ratio_num
-      rw: rw
-      rh: rh
-      w: _ten(rw, rh)[0]
-      h: _ten(rw, rh)[1]
+      width: width
+      height: height
+      source:
+        w: $source_img.width
+        h: $source_img.height
+      crop: 
+        w: crop_w
+        h: crop_h
+        x: crop_x
+        y: crop_y
+      aspect_ratio: $aspect_ratio_num
+      aw: rw
+      ah: rh
+      rw: _ten(rw, rh)[0]
+      rh: _ten(rw, rh)[1]
+      modified: is_modified
     }
   
   scale = (aspect_ratio_num)->
     if not $source_img
       return
     aspect_ratio_num = Number(aspect_ratio_num)
+    if $aspect_ratio_num != aspect_ratio_num
+      $touched = true # only need change modified once.
     if aspect_ratio_num and aspect_ratio_num <= 1
       $aspect_ratio_num = aspect_ratio_num
-
-    return aspect()
+    
+    return recipe()
   
   mimetype = ->
     return _get_mimetype($source_img.src)
-  
+
+      
   capture = (img_mimetype, encoder)->
     if not $current_img
       return
@@ -487,31 +534,25 @@ baguaImageEditor = (editor, opt, is_debug)->
     if not img_mimetype
       img_mimetype = _get_mimetype($source_img.src)
     
-    src_width = int($source_img.width * $aspect_ratio_num)
-    src_height = int($source_img.height * $aspect_ratio_num)
-
-    percent = src_width / $current_img.width
-
-    width = int((parseInt($crop_container.style.width) or 0)* percent)
-    height = int((parseInt($crop_container.style.height) or 0) * percent)
-    top = int((parseInt($crop_container.style.top) or 0) * percent)
-    left = int((parseInt($crop_container.style.left) or 0) * percent)
+    img_recipe = recipe()
     
-    width = min(width, src_width)
-    height = min(height, src_height)
-
     org_canvas = document.createElement('canvas')
-    org_canvas.width = src_width
-    org_canvas.height = src_height
+    org_canvas.width = img_recipe.width
+    org_canvas.height = img_recipe.height
     org_context = org_canvas.getContext('2d')
-    org_context.drawImage($source_img, 0, 0, src_width, src_height)
-
+    org_context.drawImage($source_img,
+      0, 0, img_recipe.width, img_recipe.height
+    )
+    
+    img_crop = img_recipe.crop
     canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
+    canvas.width = img_crop.w
+    canvas.height = img_crop.h
     canvas_context = canvas.getContext('2d')
-    canvas_context.drawImage(org_canvas, left, top, width, height, 
-                                            0,   0, width, height)
+    canvas_context.drawImage(org_canvas,
+      img_crop.x, img_crop.y, img_crop.w, img_crop.h, 
+      0,          0,          img_crop.w, img_crop.h
+    )
 
     $img_dataurl = canvas.toDataURL(img_mimetype, encoder)
     return $img_dataurl
@@ -528,7 +569,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     dataurl = $img_dataurl if not dataurl
     new_media = dataURLToBlob dataurl
     new_media.name = media.name
-    new_media.lastModified = media.lastModified
+    new_media.lastModified = media.lastModified or document.lastModified
     new_media.lastModifiedDate = new Date()
     return new_media
 
@@ -543,12 +584,14 @@ baguaImageEditor = (editor, opt, is_debug)->
   destroy = ->
     if not $img_editor
       throw project_name+': Image Editor not inited!'
+    console.log '---- Bagua Image Editor destroyed ----'
     unload()
     loadedHook = null
     $img_editor = null
 
   unload = ->
     if $img_editor and $current_img
+      removeAllListeners()
       $img_editor.innerHTML = ''
       $reisze_timer_id = null
       $source_img = null
@@ -559,18 +602,21 @@ baguaImageEditor = (editor, opt, is_debug)->
       $cropped_img = null
       $img_cropper = null
       $img_dataurl = null
-      removeAllListeners()
+      $touched = false
+
 
   load = (img_src)->
     if not $img_editor
-      throw project_name+': Image Editor not inited!'
+      throw project_name+': Image Editor can not load before inited!'
     
     if typeof img_src isnt 'string' or not _get_mimetype(img_src)
       throw project_name+': Invalid image!'
-    
+
     unload()
-    
+
     img = new Image()
+    if $options.cors
+      img.setAttribute('crossOrigin', 'anonymous')
     img.src = img_src
     img.onload = (e)->
       if not $img_editor
@@ -578,7 +624,7 @@ baguaImageEditor = (editor, opt, is_debug)->
       set_image(img)
       set_area()
       set_cropper()
-      
+
       if typeof loadedHook == 'function'
         loadedHook()
   
@@ -608,6 +654,9 @@ baguaImageEditor = (editor, opt, is_debug)->
     $img_editor.style.position = 'relative'
     $img_editor.style.background = 'yellow' if debug
     addListener window, 'resize', resize_handler
+    
+    console.log '---- Bagua Image Editor inited ----'
+    console.log 'version:', ver
   
   if editor
     init(editor, opt, is_debug)
@@ -618,7 +667,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     init: init
     load: load
     unload: unload
-    aspect: aspect
+    recipe: recipe
     mimetype: mimetype
     scale: scale
     capture: capture
