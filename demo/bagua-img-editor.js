@@ -6,7 +6,7 @@
   baguaImageEditor = function(editor, opt, is_debug) {
     var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.3.0';
+    ver = '0.3.1';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -252,7 +252,6 @@
     };
     set_image = function(img) {
       var current_img;
-      $source_img = img;
       current_img = img.cloneNode();
       current_img.style.maxWidth = '100%';
       current_img.style.maxHeight = '100%';
@@ -263,18 +262,24 @@
       pos_image();
       return current_img;
     };
-    set_cropper = function() {
-      var corner, crop_container, cropped_img, cropper, dim, index, ori;
+    set_cropper = function(recipe) {
+      var _crop_bottom, _crop_left, _crop_right, _crop_top, corner, crop_container, cropped_img, cropper, dim, index, ori;
       if (!$current_area || !$current_img) {
         throw project_name + ': Can not set copper before set area and img.';
         return;
       }
+      if (recipe && recipe.cropper_area) {
+        _crop_top = px(recipe.cropper_area[0]);
+        _crop_right = px(recipe.cropper_area[1]);
+        _crop_bottom = px(recipe.cropper_area[2]);
+        _crop_left = px(recipe.cropper_area[3]);
+      }
       cropper = document.createElement('DIV');
       cropper.style.position = 'absolute';
-      cropper.style.top = 0;
-      cropper.style.left = 0;
-      cropper.style.right = 0;
-      cropper.style.bottom = 0;
+      cropper.style.top = _crop_top || 0;
+      cropper.style.right = _crop_right || 0;
+      cropper.style.bottom = _crop_bottom || 0;
+      cropper.style.left = _crop_left || 0;
       cropper.style.zIndex = 99;
       cropper.setAttribute(CROPPER, now);
       cropper.classList.add(CROPPER);
@@ -454,7 +459,7 @@
       return null;
     };
     recipe = function() {
-      var crop_h, crop_w, crop_x, crop_y, height, is_modified, percent, r, rh, rw, width;
+      var crop_h, crop_w, crop_x, crop_y, cropper_area, height, is_modified, percent, r, rh, rw, width;
       r = _ratio($source_img.width, $source_img.height);
       rw = int($source_img.width / r);
       rh = int($source_img.height / r);
@@ -467,6 +472,7 @@
       crop_y = int((parseInt($crop_container.style.top) || 0) * percent);
       crop_w = min(crop_w, width);
       crop_h = min(crop_h, height);
+      cropper_area = [parseInt($img_cropper.style.top) || 0, parseInt($img_cropper.style.right) || 0, parseInt($img_cropper.style.bottom) || 0, parseInt($img_cropper.style.left) || 0];
       is_modified = crop_w !== width || crop_h !== height || !$touched;
       return {
         width: width,
@@ -481,6 +487,7 @@
           x: crop_x,
           y: crop_y
         },
+        cropper_area: cropper_area,
         aspect_ratio: $aspect_ratio_num,
         aw: rw,
         ah: rh,
@@ -584,8 +591,7 @@
         return $touched = false;
       }
     };
-    load = function(img_src) {
-      var img;
+    load = function(img_src, recipe) {
       if (!$img_editor) {
         throw project_name + ': Image Editor can not load before inited!';
       }
@@ -593,18 +599,18 @@
         throw project_name + ': Invalid image!';
       }
       unload();
-      img = new Image();
+      $source_img = new Image();
       if ($options.cors) {
-        img.setAttribute('crossOrigin', 'anonymous');
+        $source_img.setAttribute('crossOrigin', 'anonymous');
       }
-      img.src = img_src;
-      return img.onload = function(e) {
+      $source_img.src = img_src;
+      return $source_img.onload = function(e) {
         if (!$img_editor) {
           return;
         }
-        set_image(img);
+        set_image($source_img);
         set_area();
-        set_cropper();
+        set_cropper(recipe);
         if (typeof loadedHook === 'function') {
           return loadedHook();
         }
@@ -725,12 +731,17 @@
     }
   };
 
-  get_file_ext = function(filename) {
-    var error, pair;
+  get_file_ext = function(str) {
+    var error, ext, pair;
     try {
-      pair = filename.split('.');
+      str = str.split('?')[0].split('#')[0];
+      if (str.substr(-1) === '/') {
+        str = str.substr(0, str.length - 1);
+      }
+      pair = str.split('.');
       if (pair.length > 1) {
-        return pair.pop();
+        ext = pair.pop();
+        return ext.toLowerCase();
       }
       return '';
     } catch (error) {
@@ -778,7 +789,7 @@
         restrict: 'EA',
         scope: {
           imgSrcUrl: '=',
-          imgType: '=',
+          imgRecipe: '=',
           options: '='
         },
         link: function(scope, element, attrs) {
@@ -789,7 +800,7 @@
           if (scope.imgSrcUrl) {
             scope.$watch('imgSrcUrl', function(src) {
               if (src) {
-                return img_editor.load(src, scope.imgType);
+                return img_editor.load(src, scope.imgRecipe);
               }
             });
           }

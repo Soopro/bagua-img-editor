@@ -1,5 +1,5 @@
 # ------------------------------->
-# Sup Image Editor
+# Bagua Image Editor
 #
 # Author : Redy Ru
 # Email : redy.ru@gmail.com
