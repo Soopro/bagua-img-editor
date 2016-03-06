@@ -4,9 +4,9 @@
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   baguaImageEditor = function(editor, opt, is_debug) {
-    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
+    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, reload, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.3.1';
+    ver = '0.3.2';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -459,7 +459,7 @@
       return null;
     };
     recipe = function() {
-      var crop_h, crop_w, crop_x, crop_y, cropper_area, height, is_modified, percent, r, rh, rw, width;
+      var crop_h, crop_w, crop_x, crop_y, cropper_area, height, percent, r, rh, rw, width;
       r = _ratio($source_img.width, $source_img.height);
       rw = int($source_img.width / r);
       rh = int($source_img.height / r);
@@ -473,7 +473,6 @@
       crop_w = min(crop_w, width);
       crop_h = min(crop_h, height);
       cropper_area = [parseInt($img_cropper.style.top) || 0, parseInt($img_cropper.style.right) || 0, parseInt($img_cropper.style.bottom) || 0, parseInt($img_cropper.style.left) || 0];
-      is_modified = crop_w !== width || crop_h !== height || !$touched;
       return {
         width: width,
         height: height,
@@ -493,7 +492,7 @@
         ah: rh,
         rw: _ten(rw, rh)[0],
         rh: _ten(rw, rh)[1],
-        modified: is_modified
+        modified: $touched
       };
     };
     scale = function(aspect_ratio_num) {
@@ -591,6 +590,13 @@
         return $touched = false;
       }
     };
+    reload = function(img_src) {
+      if (!img_src) {
+        img_src = $source_img.src;
+      }
+      unload();
+      return load(img_src);
+    };
     load = function(img_src, recipe) {
       if (!$img_editor) {
         throw project_name + ': Image Editor can not load before inited!';
@@ -654,6 +660,7 @@
     methods = {
       init: init,
       load: load,
+      reload: reload,
       unload: unload,
       recipe: recipe,
       mimetype: mimetype,
