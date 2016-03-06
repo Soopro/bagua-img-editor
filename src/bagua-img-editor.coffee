@@ -28,7 +28,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.3.1'
+  ver = '0.3.2'
   now = Date.now()
   debug = false
   
@@ -494,7 +494,8 @@ baguaImageEditor = (editor, opt, is_debug)->
         if ext in v
           return k
     return null
-    
+
+
   recipe = ->
     r = _ratio($source_img.width, $source_img.height)
     rw = int($source_img.width / r)
@@ -519,9 +520,6 @@ baguaImageEditor = (editor, opt, is_debug)->
       parseInt($img_cropper.style.left) or 0
     ]
     
-    
-    is_modified = crop_w != width or crop_h != height or not $touched
-    
     return {
       width: width
       height: height
@@ -539,9 +537,10 @@ baguaImageEditor = (editor, opt, is_debug)->
       ah: rh
       rw: _ten(rw, rh)[0]
       rh: _ten(rw, rh)[1]
-      modified: is_modified
+      modified: $touched
     }
-  
+
+
   scale = (aspect_ratio_num)->
     if not $source_img
       return
@@ -553,6 +552,7 @@ baguaImageEditor = (editor, opt, is_debug)->
     
     return recipe()
   
+
   mimetype = ->
     return _get_mimetype($source_img.src)
 
