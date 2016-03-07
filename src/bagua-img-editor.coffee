@@ -28,7 +28,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.3.2'
+  ver = '0.3.3'
   now = Date.now()
   debug = false
   
@@ -304,11 +304,16 @@ baguaImageEditor = (editor, opt, is_debug)->
       throw project_name+': Can not set copper before set area and img.'
       return
       
-    if recipe and recipe.cropper_area
-      _crop_top = px(recipe.cropper_area[0])
-      _crop_right = px(recipe.cropper_area[1])
-      _crop_bottom = px(recipe.cropper_area[2])
-      _crop_left = px(recipe.cropper_area[3])
+    if recipe and typeof(recipe) == 'object'
+      if recipe.cropper_area
+        _crop_top = px(recipe.cropper_area[0])
+        _crop_right = px(recipe.cropper_area[1])
+        _crop_bottom = px(recipe.cropper_area[2])
+        _crop_left = px(recipe.cropper_area[3])
+
+      if recipe.aspect_ratio and recipe.aspect_ratio <= 1 \
+      and typeof recipe.aspect_ratio is 'number'
+        $aspect_ratio_num = recipe.aspect_ratio
 
     cropper = document.createElement('DIV')
     cropper.style.position = 'absolute'
@@ -497,6 +502,8 @@ baguaImageEditor = (editor, opt, is_debug)->
 
 
   recipe = ->
+    if not $source_img or not $current_img
+      return
     r = _ratio($source_img.width, $source_img.height)
     rw = int($source_img.width / r)
     rh = int($source_img.height / r)
@@ -554,6 +561,8 @@ baguaImageEditor = (editor, opt, is_debug)->
   
 
   mimetype = ->
+    if not $source_img
+      return
     return _get_mimetype($source_img.src)
 
       
