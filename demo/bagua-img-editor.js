@@ -6,7 +6,7 @@
   baguaImageEditor = function(editor, opt, is_debug) {
     var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, reload, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.3.2';
+    ver = '0.3.4';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -228,7 +228,7 @@
         hanlder: handler,
         capture: capture
       });
-      node.addEventListener(event, handler, capture);
+      node.addEventListener(event, handler, Boolean(capture));
     };
     removeListeners = function(node, event) {
       var idx, j, len, listener, remove_idxs;
@@ -268,11 +268,16 @@
         throw project_name + ': Can not set copper before set area and img.';
         return;
       }
-      if (recipe && recipe.cropper_area) {
-        _crop_top = px(recipe.cropper_area[0]);
-        _crop_right = px(recipe.cropper_area[1]);
-        _crop_bottom = px(recipe.cropper_area[2]);
-        _crop_left = px(recipe.cropper_area[3]);
+      if (recipe && typeof recipe === 'object') {
+        if (recipe.cropper_area) {
+          _crop_top = px(recipe.cropper_area[0]);
+          _crop_right = px(recipe.cropper_area[1]);
+          _crop_bottom = px(recipe.cropper_area[2]);
+          _crop_left = px(recipe.cropper_area[3]);
+        }
+        if (recipe.aspect_ratio && recipe.aspect_ratio <= 1 && typeof recipe.aspect_ratio === 'number') {
+          $aspect_ratio_num = recipe.aspect_ratio;
+        }
       }
       cropper = document.createElement('DIV');
       cropper.style.position = 'absolute';
@@ -460,6 +465,9 @@
     };
     recipe = function() {
       var crop_h, crop_w, crop_x, crop_y, cropper_area, height, percent, r, rh, rw, width;
+      if (!$source_img || !$current_img) {
+        return;
+      }
       r = _ratio($source_img.width, $source_img.height);
       rw = int($source_img.width / r);
       rh = int($source_img.height / r);
@@ -509,6 +517,9 @@
       return recipe();
     };
     mimetype = function() {
+      if (!$source_img) {
+        return;
+      }
       return _get_mimetype($source_img.src);
     };
     capture = function(img_mimetype, encoder) {
