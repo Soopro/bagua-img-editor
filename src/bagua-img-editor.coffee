@@ -28,7 +28,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.3.4'
+  ver = '0.3.5'
   now = Date.now()
   debug = false
 
@@ -37,6 +37,20 @@ baguaImageEditor = (editor, opt, is_debug)->
     'image/jpeg': ['jpg', 'jpe', 'jpeg']
     'image/gif': ['gif']
     'image/bmp': ['bm', 'bmp']
+
+  default_styles = "
+    *[bagua-image-editor] [cropper] {
+      outline: 1px dotted #999;
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    *[bagua-image-editor] [cropper] [crop-corner] {
+      border-radius: 50%;
+      background: #999;
+    }
+  "
 
   $options =
     corner_size: 12
@@ -288,6 +302,15 @@ baguaImageEditor = (editor, opt, is_debug)->
 
 
 # ---------------- Functions --------------
+
+  add_default_styles = ->
+    if document.querySelector('style[bagua-style]')
+      return
+    el_style = document.createElement('style')
+    el_style.innerHTML = default_styles
+    el_style.setAttribute('bagua-style', '')
+    document.head.insertBefore(el_style, document.head.firstChild)
+
   set_image = (img) ->
     current_img = img.cloneNode()
     current_img.style.maxWidth = '100%'
@@ -701,6 +724,8 @@ baguaImageEditor = (editor, opt, is_debug)->
     $img_editor.style.position = 'relative'
     $img_editor.style.background = 'yellow' if debug
     addListener window, 'resize', resize_handler
+
+    add_default_styles()
 
     console.log '---- Bagua Image Editor inited ----'
     console.log 'version:', ver
