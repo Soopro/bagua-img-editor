@@ -4,9 +4,9 @@
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   baguaImageEditor = function(editor, opt, is_debug) {
-    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_drag_corner_hanlders, blob, capture, capture_blob, debug, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, reload, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
+    var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_default_styles, add_drag_corner_hanlders, blob, capture, capture_blob, debug, default_styles, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, reload, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.3.4';
+    ver = '0.4.1';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -15,6 +15,7 @@
       'image/gif': ['gif'],
       'image/bmp': ['bm', 'bmp']
     };
+    default_styles = "*[bagua-image-editor] [cropper] { outline: 1px dotted #999; -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; user-select: none; } *[bagua-image-editor] [cropper] [crop-corner] { border-radius: 50%; background: #999; }";
     $options = {
       corner_size: 12,
       crop_min_size: 32,
@@ -250,6 +251,16 @@
       }
       _eventListeners.length = 0;
     };
+    add_default_styles = function() {
+      var el_style;
+      if (document.querySelector('style[bagua-style]')) {
+        return;
+      }
+      el_style = document.createElement('style');
+      el_style.innerHTML = default_styles;
+      el_style.setAttribute('bagua-style', '');
+      return document.head.insertBefore(el_style, document.head.firstChild);
+    };
     set_image = function(img) {
       var current_img;
       current_img = img.cloneNode();
@@ -269,11 +280,11 @@
         return;
       }
       if (recipe && typeof recipe === 'object') {
-        if (recipe.cropper_area) {
-          _crop_top = px(recipe.cropper_area[0]);
-          _crop_right = px(recipe.cropper_area[1]);
-          _crop_bottom = px(recipe.cropper_area[2]);
-          _crop_left = px(recipe.cropper_area[3]);
+        if (recipe.crop && recipe.crop.ratio) {
+          _crop_top = px($current_img.clientHeight * recipe.crop.ratio[0]);
+          _crop_right = px($current_img.clientWidth * recipe.crop.ratio[1]);
+          _crop_bottom = px($current_img.clientHeight * recipe.crop.ratio[2]);
+          _crop_left = px($current_img.clientWidth * recipe.crop.ratio[3]);
         }
         if (recipe.aspect_ratio && recipe.aspect_ratio <= 1 && typeof recipe.aspect_ratio === 'number') {
           $aspect_ratio_num = recipe.aspect_ratio;
@@ -464,7 +475,7 @@
       return null;
     };
     recipe = function() {
-      var crop_h, crop_w, crop_x, crop_y, cropper_area, height, percent, r, rh, rw, width;
+      var ca_bottom, ca_left, ca_right, ca_top, crop_h, crop_ratio, crop_w, crop_x, crop_y, height, percent, r, rh, rw, width;
       if (!$source_img || !$current_img) {
         return;
       }
@@ -480,7 +491,11 @@
       crop_y = int((parseInt($crop_container.style.top) || 0) * percent);
       crop_w = min(crop_w, width);
       crop_h = min(crop_h, height);
-      cropper_area = [parseInt($img_cropper.style.top) || 0, parseInt($img_cropper.style.right) || 0, parseInt($img_cropper.style.bottom) || 0, parseInt($img_cropper.style.left) || 0];
+      ca_top = parseInt($img_cropper.style.top);
+      ca_right = parseInt($img_cropper.style.right);
+      ca_bottom = parseInt($img_cropper.style.bottom);
+      ca_left = parseInt($img_cropper.style.left);
+      crop_ratio = [ca_top / $current_img.clientHeight, ca_right / $current_img.clientWidth, ca_bottom / $current_img.clientHeight, ca_left / $current_img.clientWidth];
       return {
         width: width,
         height: height,
@@ -492,9 +507,9 @@
           w: crop_w,
           h: crop_h,
           x: crop_x,
-          y: crop_y
+          y: crop_y,
+          ratio: crop_ratio
         },
-        cropper_area: cropper_area,
         aspect_ratio: $aspect_ratio_num,
         aw: rw,
         ah: rh,
@@ -662,6 +677,7 @@
         $img_editor.style.background = 'yellow';
       }
       addListener(window, 'resize', resize_handler);
+      add_default_styles();
       console.log('---- Bagua Image Editor inited ----');
       return console.log('version:', ver);
     };
