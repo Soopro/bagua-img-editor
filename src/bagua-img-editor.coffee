@@ -28,7 +28,7 @@
 baguaImageEditor = (editor, opt, is_debug)->
   # ---------------- Variables --------------
   project_name = 'BaguaImgEditor'
-  ver = '0.4.1'
+  ver = '0.4.2'
   now = Date.now()
   debug = false
 
@@ -568,10 +568,10 @@ baguaImageEditor = (editor, opt, is_debug)->
         y: crop_y
         ratio: crop_ratio
       aspect_ratio: $aspect_ratio_num
-      aw: rw
-      ah: rh
-      rw: _ten(rw, rh)[0]
-      rh: _ten(rw, rh)[1]
+      rw: rw
+      rh: rh
+      pw: _ten(rw, rh)[0]
+      ph: _ten(rw, rh)[1]
       modified: $touched
     }
 

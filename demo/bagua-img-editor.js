@@ -6,7 +6,7 @@
   baguaImageEditor = function(editor, opt, is_debug) {
     var $aspect_ratio_num, $crop_container, $cropped_img, $current_area, $current_corner, $current_img, $img_cropper, $img_dataurl, $img_editor, $options, $reisze_timer_id, $source_img, $touched, CROPPER, CROP_CORNER, EDITOR_ID, ORIENTATION, _eventListeners, _get_mimetype, _ratio, _ten, addListener, add_cropper_hanlders, add_default_styles, add_drag_corner_hanlders, blob, capture, capture_blob, debug, default_styles, destroy, init, last_area_height, last_area_width, load, loadedHook, methods, mimetype, mimetypes, now, pos_area, pos_cropper, pos_image, project_name, recipe, reload, removeAllListeners, removeListeners, resize_handler, scale, set_area, set_cropper, set_image, set_loaded_hook, unload, ver;
     project_name = 'BaguaImgEditor';
-    ver = '0.4.1';
+    ver = '0.4.2';
     now = Date.now();
     debug = false;
     mimetypes = {
@@ -511,10 +511,10 @@
           ratio: crop_ratio
         },
         aspect_ratio: $aspect_ratio_num,
-        aw: rw,
-        ah: rh,
-        rw: _ten(rw, rh)[0],
-        rh: _ten(rw, rh)[1],
+        rw: rw,
+        rh: rh,
+        pw: _ten(rw, rh)[0],
+        ph: _ten(rw, rh)[1],
         modified: $touched
       };
     };
